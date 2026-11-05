@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title data-i18n="appearance.title">Route Lens · 外观</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="page">
+    <header class="page-header">
+      <div class="brand"><span class="brand-mark" aria-hidden="true"></span><div><p class="eyebrow">ROUTE LENS</p><h1 data-i18n="appearance.title">外观设置</h1><p class="subtitle" data-i18n="appearance.subtitle">调整 ChatGPT 页面侧栏的显示方式</p></div></div>
+      <div class="language-switch" role="group" aria-label="切换语言" data-i18n-aria-label="language.label">
+        <button type="button" data-language="en" aria-pressed="false">EN</button><button type="button" data-language="zh" aria-pressed="true">中</button>
+      </div>
+    </header>
+    <section class="panel">
+      <div class="panel-heading"><div><h2 data-i18n="appearance.layout">侧栏尺寸与位置</h2><p data-i18n="appearance.layoutHint">调整后会立即应用并保存</p></div><span id="save-status" class="save-status" role="status" data-i18n="appearance.saved">已保存</span></div>
+      <div class="slider-list">
+        <label class="slider-row" for="railWidthPx"><span class="slider-copy"><b data-i18n="appearance.width">宽度</b><small data-i18n="appearance.widthHint">64–112 px</small></span><input id="railWidthPx" data-setting="railWidthPx" type="range" min="64" max="112" step="1"><output for="railWidthPx">72 px</output></label>
+        <label class="slider-row" for="railHeightPercent"><span class="slider-copy"><b data-i18n="appearance.height">高度</b><small data-i18n="appearance.heightHint">占视口高度比例</small></span><input id="railHeightPercent" data-setting="railHeightPercent" type="range" min="40" max="90" step="1"><output for="railHeightPercent">75 %</output></label>
+        <label class="slider-row" for="railPositionPercent"><span class="slider-copy"><b data-i18n="appearance.position">垂直位置</b><small data-i18n="appearance.positionHint">从顶部到安全区域底部</small></span><input id="railPositionPercent" data-setting="railPositionPercent" type="range" min="0" max="100" step="1"><output for="railPositionPercent">58 %</output></label>
+        <label class="slider-row" for="railFontSizePx"><span class="slider-copy"><b data-i18n="appearance.fontSize">字号</b><small data-i18n="appearance.fontHint">侧栏文字大小</small></span><input id="railFontSizePx" data-setting="railFontSizePx" type="range" min="9" max="14" step="1"><output for="railFontSizePx">10 px</output></label>
+        <label class="slider-row" for="railOpacityPercent"><span class="slider-copy"><b data-i18n="appearance.opacity">背景不透明度</b><small data-i18n="appearance.opacityHint">数值越低越透明</small></span><input id="railOpacityPercent" data-setting="railOpacityPercent" type="range" min="55" max="100" step="1"><output for="railOpacityPercent">92 %</output></label>
+      </div>
+    </section>
+    <section class="panel settings-grid">
+      <div class="setting-block"><label for="theme" data-i18n="appearance.theme">主题</label><select id="theme"><option value="system" data-i18n="appearance.system">跟随系统</option><option value="light" data-i18n="appearance.light">浅色</option><option value="dark" data-i18n="appearance.dark">深色</option></select></div>
+      <div class="setting-block visibility-block"><h2 data-i18n="appearance.visibleItems">侧栏内容</h2>
+        <label class="toggle-row"><span data-i18n="appearance.routeStatus">路由状态</span><input type="checkbox" data-setting="showRouteStatus"></label>
+        <label class="toggle-row"><span data-i18n="appearance.requestedModel">请求模型</span><input type="checkbox" data-setting="showRequestedModel"></label>
+        <label class="toggle-row"><span data-i18n="appearance.actualModel">服务器报告模型</span><input type="checkbox" data-setting="showActualModel"></label>
+      </div>
+    </section>
+    <footer class="page-footer"><p data-i18n="appearance.footer">仅调整外观。记录、采集模式和隐私设置不会改变。</p><button id="reset" type="button" class="reset-button" data-i18n="appearance.reset">恢复默认外观</button></footer>
+  </main>
+  <script src="index.js"></script>
+</body>
+</html>

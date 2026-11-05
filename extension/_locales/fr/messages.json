@@ -1,0 +1,8 @@
+{
+  "extensionName": {
+    "message": "Route Lens - Modèle demandé et route de réponse"
+  },
+  "extensionDescription": {
+    "message": "Compare le modèle demandé aux champs explicites de routage de la réponse ; si les preuves sont insuffisantes, le résultat est indiqué comme non confirmé."
+  }
+}

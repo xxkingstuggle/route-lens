@@ -1,0 +1,8 @@
+{
+  "extensionName": {
+    "message": "Route Lens - 对照请求标识与服务器报告字段"
+  },
+  "extensionDescription": {
+    "message": "对照 ChatGPT 请求模型与响应中的服务器报告模型字段；证据不足时显示“无法确认”。"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "extensionName": {
+    "message": "Route Lens - Modelo solicitado e rota de resposta"
+  },
+  "extensionDescription": {
+    "message": "Compare o modelo solicitado no ChatGPT com campos explícitos da rota de resposta; quando faltarem evidências, o resultado será inconclusivo."
+  }
+}

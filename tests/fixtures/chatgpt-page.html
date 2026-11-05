@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Local ChatGPT layout mock</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; font: 15px/1.5 system-ui, sans-serif; color: #202832; background: #eef1f4; }
+    body { min-height: 100vh; }
+    .topbar { height: 56px; display: flex; align-items: center; padding: 0 24px; background: #fff; border-bottom: 1px solid #dfe5ea; font-weight: 650; }
+    .conversation { width: min(880px, calc(100% - 48px)); margin: 24px auto 0; padding: 24px 28px 150px; border: 1px solid #dfe5ea; border-radius: 14px; background: #fff; box-shadow: 0 3px 18px #0001; }
+    .message { max-width: 640px; margin: 22px 0; padding: 16px 18px; border-radius: 12px; background: #f2f4f7; }
+    .message.user { margin-left: auto; }
+    .composer { position: fixed; z-index: 1; left: 50%; bottom: 18px; transform: translateX(-50%); width: min(720px, calc(100% - 48px)); height: 64px; padding: 12px 18px; display: flex; align-items: center; border: 1px solid #d4dbe2; border-radius: 18px; background: #fff; color: #626d78; box-shadow: 0 3px 16px #0001; }
+    .composer-label { flex: 1; min-width: 0; }
+    .send { width: 32px; height: 32px; display: grid; place-items: center; flex: 0 0 32px; border-radius: 50%; background: #111; color: white; }
+    body.dark-page, body.dark-page .topbar { color: #e7ebef; background: #15191e; }
+    body.dark-page .conversation { background: #222932; border-color: #36404a; }
+    body.dark-page .message { background: #303943; }
+    body.dark-page .composer { background: #222932; border-color: #485461; color: #c5cbd1; }
+  </style>
+</head>
+<body>
+  <header class="topbar">ChatGPT · local layout preview</header>
+  <main class="conversation">
+    <h1>Local ChatGPT mock</h1>
+    <p>This page is synthetic. It loads the extension's actual content bridge from this repository.</p>
+    <div class="message user">Compare a requested model with the server-reported model field.</div>
+    <div class="message">The sample route record is synthetic and contains no prompt or answer data.</div>
+    <div class="message">Resize the browser to inspect the narrow right rail and composer placement.</div>
+  </main>
+  <div class="composer" role="group" aria-label="Mock message composer">
+    <span class="composer-label">Local mock composer — no message is sent</span>
+    <span class="send" aria-hidden="true">↑</span>
+  </div>
+  <script src="/mock/runtime.js?role=page"></script>
+  <script>
+    if (new URLSearchParams(location.search).has('page-dark')) document.body.classList.add('dark-page');
+    const context = window.routeLensPreview.state().captureContexts['1'];
+    window.addEventListener('message', (event) => {
+      if (event.source !== window || event.origin !== location.origin || event.data?.source !== 'chatgpt-route-inspector-context-request') return;
+      window.postMessage({ source: 'chatgpt-route-inspector-context', context }, location.origin);
+    });
+  </script>
+  <script src="/extension/content/bridge.js"></script>
+</body>
+</html>

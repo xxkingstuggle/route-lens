@@ -1,0 +1,8 @@
+{
+  "extensionName": {
+    "message": "Route Lens - Request and Server-Reported Model"
+  },
+  "extensionDescription": {
+    "message": "Compare the ChatGPT request model with server-reported response fields; insufficient evidence is shown as unconfirmed."
+  }
+}

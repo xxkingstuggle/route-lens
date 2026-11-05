@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="zh-CN" data-theme="system">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Route Lens</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <img class="brand-mark" src="../../icons/icon-32.png" alt="" width="28" height="28">
+      <span class="brand-name">Route Lens</span>
+    </div>
+    <div class="lang" role="group" aria-label="切换语言" data-i18n-aria-label="language.label">
+      <button type="button" data-language="zh" aria-pressed="true">中</button>
+      <button type="button" data-language="en" aria-pressed="false">EN</button>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="页面" data-i18n-aria-label="popup.tabs">
+    <button id="tab-state" type="button" role="tab" aria-controls="state-view" aria-selected="true" data-view="state" data-i18n="popup.tabState">状态</button>
+    <button id="tab-appearance" type="button" role="tab" aria-controls="appearance-view" aria-selected="false" tabindex="-1" data-view="appearance" data-i18n="popup.tabAppearance">外观</button>
+  </nav>
+
+  <main id="state-view" class="view" role="tabpanel" aria-labelledby="tab-state">
+    <p class="capture-line"><i class="dot" id="capture-dot" data-tone="idle" aria-hidden="true"></i><span id="capture-status">—</span><span class="capture-time" id="observed-at"></span></p>
+
+    <section class="route" aria-live="polite">
+      <div class="route-row">
+        <span class="route-label" data-i18n="field.requested">请求模型</span>
+        <strong class="route-value" id="requested-model">—</strong>
+      </div>
+      <div class="route-arrow" aria-hidden="true"></div>
+      <div class="route-row">
+        <span class="route-label" data-i18n="field.responseRoute">服务器报告模型</span>
+        <strong class="route-value" id="route-model">—</strong>
+      </div>
+    </section>
+
+    <p class="verdict" id="verdict" data-tone="idle"><i aria-hidden="true"></i><span id="verdict-text">—</span></p>
+    <p class="hint" id="mode-hint"></p>
+
+    <details class="details" id="details">
+      <summary><span data-i18n="popup.details">详细字段</span></summary>
+      <dl class="detail-list" id="detail-list"></dl>
+    </details>
+
+    <section class="controls" aria-label="控制" data-i18n-aria-label="popup.controls">
+      <div class="control-row">
+        <span class="control-label" id="capture-label" data-i18n="capture.section">捕获模式</span>
+        <div class="segmented" role="group" aria-labelledby="capture-label">
+          <button type="button" data-mode="live" aria-pressed="true" data-i18n="mode.live">实时请求</button>
+          <button type="button" data-mode="reload" aria-pressed="false" data-i18n="mode.reload">会话重载</button>
+        </div>
+      </div>
+      <label class="control-row" for="overlay-toggle">
+        <span class="control-label" data-i18n="overlay.label">页面侧栏</span>
+        <span class="switch-wrap"><span class="switch-state" id="overlay-state"></span><input id="overlay-toggle" class="switch" type="checkbox" role="switch"></span>
+      </label>
+    </section>
+
+    <nav class="actions" aria-label="更多" data-i18n-aria-label="popup.more">
+      <button type="button" id="dashboard" data-i18n="button.dashboard">诊断台</button>
+      <button type="button" id="copy" data-i18n="button.copySummary">复制摘要</button>
+      <button type="button" id="options" data-i18n="button.options">设置与隐私</button>
+      <span class="record-count" id="record-count"></span>
+    </nav>
+  </main>
+
+  <main id="appearance-view" class="view" role="tabpanel" aria-labelledby="tab-appearance" hidden>
+    <div class="section-head">
+      <h2 data-i18n="appearance.title">页面侧栏外观</h2>
+      <span id="appearance-save-status" class="save-status" role="status" data-i18n="appearance.saved">已保存</span>
+    </div>
+
+    <div class="sliders" role="group" aria-label="尺寸与位置" data-i18n-aria-label="appearance.layout">
+      <div class="slider">
+        <label for="railWidthPx" data-i18n="appearance.width">宽度</label>
+        <output id="railWidthPx-value" for="railWidthPx">72 px</output>
+        <input id="railWidthPx" data-appearance-setting="railWidthPx" type="range" min="64" max="112" step="1">
+      </div>
+      <div class="slider">
+        <label for="railHeightPercent" data-i18n="appearance.height">高度</label>
+        <output id="railHeightPercent-value" for="railHeightPercent">75%</output>
+        <input id="railHeightPercent" data-appearance-setting="railHeightPercent" type="range" min="40" max="90" step="1">
+      </div>
+      <div class="slider">
+        <label for="railPositionPercent" data-i18n="appearance.position">垂直位置</label>
+        <output id="railPositionPercent-value" for="railPositionPercent">58%</output>
+        <input id="railPositionPercent" data-appearance-setting="railPositionPercent" type="range" min="0" max="100" step="1">
+      </div>
+      <div class="slider">
+        <label for="railFontSizePx" data-i18n="appearance.fontSize">字号</label>
+        <output id="railFontSizePx-value" for="railFontSizePx">12 px</output>
+        <input id="railFontSizePx" data-appearance-setting="railFontSizePx" type="range" min="9" max="14" step="1">
+      </div>
+      <div class="slider">
+        <label for="railOpacityPercent" data-i18n="appearance.opacity">背景不透明度</label>
+        <output id="railOpacityPercent-value" for="railOpacityPercent">92%</output>
+        <input id="railOpacityPercent" data-appearance-setting="railOpacityPercent" type="range" min="55" max="100" step="1">
+      </div>
+    </div>
+
+    <fieldset class="field">
+      <legend data-i18n="appearance.theme">主题</legend>
+      <div class="segmented radio-group">
+        <label><input type="radio" name="theme" value="system" data-appearance-setting="theme"><span data-i18n="appearance.system">跟随系统</span></label>
+        <label><input type="radio" name="theme" value="light" data-appearance-setting="theme"><span data-i18n="appearance.light">浅色</span></label>
+        <label><input type="radio" name="theme" value="dark" data-appearance-setting="theme"><span data-i18n="appearance.dark">深色</span></label>
+      </div>
+    </fieldset>
+
+    <fieldset class="field">
+      <legend data-i18n="appearance.visibleItems">侧栏显示项</legend>
+      <div class="checks">
+        <label class="check"><input type="checkbox" data-appearance-setting="showRouteStatus"><span data-i18n="appearance.routeStatus">结论</span></label>
+        <label class="check"><input type="checkbox" data-appearance-setting="showRequestedModel"><span data-i18n="appearance.requestedModel">请求模型</span></label>
+        <label class="check"><input type="checkbox" data-appearance-setting="showActualModel"><span data-i18n="appearance.actualModel">服务器报告模型</span></label>
+      </div>
+    </fieldset>
+
+    <div class="reset-row">
+      <p data-i18n="appearance.footer">只恢复外观；记录、隐私与捕获模式不变。</p>
+      <button id="appearance-reset" type="button" data-i18n="appearance.reset">恢复默认外观</button>
+    </div>
+  </main>
+
+  <footer class="credit">
+    <span>Route Lens <span id="version">1.3.1</span></span>
+    <span class="credit-sep" aria-hidden="true">·</span>
+    <span><span data-i18n="credit.maintainer">维护</span> <a href="https://github.com/xxkingstuggle" target="_blank" rel="noopener noreferrer">xxkingstuggle</a></span>
+  </footer>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="index.js"></script>
+</body>
+</html>

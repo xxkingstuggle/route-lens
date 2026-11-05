@@ -1,0 +1,8 @@
+{
+  "extensionName": {
+    "message": "Route Lens - Model yang Diminta dan Rute Respons"
+  },
+  "extensionDescription": {
+    "message": "Bandingkan model ChatGPT yang diminta dengan kolom rute respons eksplisit; bukti yang tidak cukup ditampilkan sebagai belum terkonfirmasi."
+  }
+}

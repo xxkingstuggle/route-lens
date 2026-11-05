@@ -1,0 +1,8 @@
+{
+  "extensionName": {
+    "message": "Route Lens - 요청 모델과 응답 경로"
+  },
+  "extensionDescription": {
+    "message": "요청한 ChatGPT 모델을 명시적인 응답 경로 필드와 비교합니다. 증거가 부족하면 확인 불가로 표시합니다."
+  }
+}

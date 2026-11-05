@@ -1,0 +1,8 @@
+{
+  "extensionName": {
+    "message": "Route Lens - リクエストモデルと応答ルート"
+  },
+  "extensionDescription": {
+    "message": "リクエストされたChatGPTモデルと明示的な応答ルートフィールドを比較します。証拠が不十分な場合は未確認と表示します。"
+  }
+}

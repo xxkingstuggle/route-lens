@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title data-i18n="notice.documentTitle">Route Lens · 1.3.0 版本公告</title>
+  <link rel="stylesheet" href="../shared/styles.css">
+</head>
+<body>
+  <main class="announcement">
+    <header class="masthead announcement-masthead">
+      <div class="brand"><span class="brand-mark" aria-hidden="true"></span><div class="brand-copy"><div class="brand-title-line"><h1>Route Lens</h1></div><p data-i18n="notice.subtitle">1.3.0 · 版本公告</p></div></div>
+      <div class="language-switch" role="group" aria-label="切换语言" data-i18n-aria-label="language.label"><button type="button" data-language="en" aria-pressed="false">EN</button><button type="button" data-language="zh" aria-pressed="true">中</button></div>
+    </header>
+    <article class="announcement-body" aria-label="版本公告" data-i18n-aria-label="notice.badge">
+      <span class="tag auto" data-i18n="notice.badge">版本公告</span>
+      <ol class="announcement-points">
+        <li>
+          <p data-i18n="notice.pollResult">字段缺失不能确认是否发生路由变化，也不能单独证明降级。</p>
+          <p data-i18n="notice.hint">仅在取得显式响应路由字段和请求模型时比较二者。字段缺失、只有模型标签或缺少请求模型时，无法确认是否一致。</p>
+        </li>
+        <li><p data-i18n="notice.scopeCopy">本扩展比较请求模型与显式响应路由字段。网页 Work 模式的路由证据不足时，显示“无法确认”。</p></li>
+      </ol>
+
+      <div class="announcement-actions">
+        <button id="notice-close" class="button" type="button" data-i18n="notice.close">关闭公告</button>
+      </div>
+      <section class="announcement-history" aria-labelledby="notice-history-title">
+        <h3 id="notice-history-title" data-i18n="notice.historyTitle">历代更新日志</h3>
+        <ol class="announcement-releases">
+          <li><span class="release-version">v1.3.0</span><p data-i18n="notice.release130">全新 Route Lens 品牌与轻量前端；首屏聚焦核心路由，次要字段按需折叠；支持弹出层外观即时控制与深浅色平面视觉。</p></li>
+          <li><span class="release-version">v1.2.3</span><p data-i18n="notice.release123">外观控制整合到扩展弹出页；路由结果明确限定为服务器报告字段。</p></li>
+          <li><span class="release-version">v1.2.2</span><p data-i18n="notice.release122">重做了紧凑弹出页，新增侧栏尺寸、位置、字号、透明度、主题和显示项自定义。</p></li>
+          <li><span class="release-version">v1.2.1</span><p data-i18n="notice.release121">改为页面最右侧常驻窄型状态栏，只显示路由状态、请求模型与服务器报告模型字段；内容可在栏内滚动，主题跟随浏览器。</p></li>
+          <li><span class="release-version">v1.0.9</span><p data-i18n="notice.release109">修复新建会话时实时请求模型与响应路由无法显示的问题；扩展连接失效时提示刷新页面，避免浮窗按钮无响应。</p></li>
+          <li><span class="release-version">v1.0.8</span><p data-i18n="notice.release108">旧版曾把字段缺失标为“疑似降级”；当前版本证据不足时显示“无法确认”。</p></li>
+          <li><span class="release-version">v1.0.7</span><p data-i18n="notice.release107">实时请求与会话重载同时独立采集，切换标签即可查看；优化浮窗排版。</p></li>
+          <li><span class="release-version">v1.0.6</span><p data-i18n="notice.release106">适配增量流、多行 SSE 与 WebSocket；修复请求配对与记录隔离；新增额度快照和自动推理状态。</p></li>
+          <li><span class="release-version">v1.0.5</span><p data-i18n="notice.release105">修复 ChatGPT 页面重建后浮窗消失的问题，并保留手动隐藏设置。</p></li>
+          <li><span class="release-version">v1.0.4</span><p data-i18n="notice.release104">适配 ChatGPT 会话接口的路径与响应结构调整。</p></li>
+          <li><span class="release-version">v1.0.3</span><p data-i18n="notice.release103">新增迷你浮窗与边缘停靠，优化英文文案和窄屏排版。</p></li>
+          <li><span class="release-version">v1.0.2</span><p data-i18n="notice.release102">支持项目内会话的重载路由识别，并加强导出脱敏与隐私测试。</p></li>
+          <li><span class="release-version">v1.0.1</span><p data-i18n="notice.release101">包括实时请求、会话重载、Popup、浮窗、诊断台、PoW 数据及中英文界面。</p></li>
+        </ol>
+      </section>
+    </article>
+  </main>
+  <script src="index.js"></script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+{
+  "extensionName": {
+    "message": "Route Lens - Angefordertes Modell und Antwort-Route"
+  },
+  "extensionDescription": {
+    "message": "Vergleicht das angeforderte ChatGPT-Modell mit expliziten Antwort-Routenfeldern; bei fehlenden Belegen wird das Ergebnis als nicht bestätigbar angezeigt."
+  }
+}
