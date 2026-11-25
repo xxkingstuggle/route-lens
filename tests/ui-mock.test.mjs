@@ -115,7 +115,8 @@ test('bridge.js 静态源码包含 Shadow DOM 侧栏与条内滚动容器', asyn
   assert.match(bridge, /attachShadow\(\{ mode: "open" \}\)/, '侧栏使用 Shadow DOM');
   assert.match(bridge, /function setNarrowRailSpace\(enabled,\s*width\s*=\s*72\)/);
   assert.match(bridge, /margin-right:\s*\$\{width\}px\s*!important/);
-  assert.match(bridge, /class="rail-scroll"/);
+  assert.match(bridge, /rail-scroll/);
+  assert.doesNotMatch(bridge, /\.innerHTML\b/, '侧栏不使用 innerHTML');
   assert.match(bridge, /overflow-y:auto/);
   assert.match(bridge, /--accent:\s*#1a68d8/);
   assert.match(bridge, /--accent:\s*#4d93f7/);
