@@ -620,6 +620,7 @@
     dataLength = 0;
     previous = { channel: 0, path: "", op: "add" };
     channels = /* @__PURE__ */ new Map();
+    lastDeltaChanged = true;
     push(text, onEvent) {
       this.buffer += text;
       let start = 0;
@@ -694,10 +695,12 @@
         return;
       }
       const item = record4(value);
+      let unchanged = false;
       if (name === "delta" && item && ("v" in item || "o" in item || "p" in item || "c" in item)) {
         value = this.delta(item);
+        unchanged = !this.lastDeltaChanged;
       }
-      onEvent({ value, done: false });
+      onEvent({ value, done: false, unchanged });
     }
     delta(item) {
       const channel = "c" in item ? item.c : this.previous.channel;
@@ -706,8 +709,10 @@
       if (typeof channel !== "number" || !Number.isSafeInteger(channel) || channel < 0 || typeof path !== "string" || path.length > MAX_STRING_CHARS || typeof op !== "string" || !OPERATIONS.has(op)) throw new Error("invalid_stream_delta");
       if (!this.channels.has(channel) && this.channels.size >= MAX_CHANNELS) throw new Error("stream_channel_limit");
       const header = { channel, path, op };
-      const result = this.apply(this.channels.get(channel), header, item.v, { operations: 0 });
-      if ((JSON.stringify(result)?.length ?? 0) > 64 * 1024) throw new Error("stream_metadata_limit");
+      const budget = { operations: 0, changed: false };
+      const result = this.apply(this.channels.get(channel), header, item.v, budget);
+      this.lastDeltaChanged = budget.changed;
+      if (budget.changed && (JSON.stringify(result)?.length ?? 0) > 64 * 1024) throw new Error("stream_metadata_limit");
       this.previous = header;
       this.channels.set(channel, result);
       return result;
@@ -746,26 +751,35 @@
       } else if (op === "remove") {
         if (Array.isArray(parent)) parent.splice(Number(key), 1);
         else delete target[key];
+        budget.changed = true;
       } else if (op === "truncate") {
         if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) throw new Error("invalid_stream_delta");
         if (typeof old === "string") target[key] = old.slice(0, value);
         else if (Array.isArray(old)) old.length = Math.min(old.length, value);
+        budget.changed = true;
       } else {
         const next = tokens.at(-1) === "widget_state" ? projectResearchWidgetState(value) : tokens.at(-1) === "image_gen_title" ? typeof value === "string" && value.trim() ? "present" : null : project(value);
         if (op === "append" && typeof old === "string" && typeof next === "string") {
           if (old.length + next.length > MAX_STRING_CHARS) throw new Error("stream_metadata_limit");
           target[key] = old + next;
+          if (next.length > 0) budget.changed = true;
         } else if (op === "append" && Array.isArray(old)) {
           const items = Array.isArray(next) ? next : [next];
           if (old.length + items.length > 128) throw new Error("stream_metadata_limit");
           old.push(...items);
+          if (items.length > 0) budget.changed = true;
         } else if (op === "append" && record4(old) && record4(next)) {
-          Object.assign(old, next);
+          if (Object.keys(next).length > 0) {
+            Object.assign(old, next);
+            budget.changed = true;
+          }
         } else if (op === "add" && Array.isArray(parent)) {
           if (parent.length >= 128) throw new Error("stream_metadata_limit");
           parent.splice(Number(key), 0, next);
+          budget.changed = true;
         } else {
           target[key] = next;
+          budget.changed = true;
         }
       }
       return box.root;
@@ -925,7 +939,7 @@
     fields = { ...EMPTY_ROUTE_FIELDS };
     accept = (event) => {
       if (event.reset) this.fields = { ...EMPTY_ROUTE_FIELDS };
-      if (!event.done) this.fields = walkForFields(event.value, this.fields);
+      if (!event.done && !event.unchanged) this.fields = walkForFields(event.value, this.fields);
       this.onEvent?.(event);
     };
     push(text) {
@@ -1331,10 +1345,15 @@
   var nativeWebSocket = window.WebSocket;
   var allowedOrigins = new Set(define_ROUTE_INSPECTOR_ALLOWED_ORIGINS_default);
   var MAX_CONVERSATION_RECORD_BYTES = 8 * 1024 * 1024;
+  var MAX_SSE_STREAM_BYTES = 16 * 1024 * 1024;
+  var MAX_REQUEST_BODY_BYTES = 2 * 1024 * 1024;
   var MAX_POW_RESPONSE_BYTES = 256 * 1024;
   var MAX_PENDING_CAPTURES = 32;
   var MAX_CAPTURE_TOPICS = 8;
   var PENDING_CAPTURE_TTL_MS = 10 * 60 * 1e3;
+  var HARD_ACTIVE_CAPTURE_TTL_MS = 30 * 60 * 1e3;
+  var MAINTENANCE_INTERVAL_MS = 15 * 1e3;
+  var HISTORY_WRAPPED = Symbol.for("route-lens.history-wrapped");
   var captureEnabled = false;
   var controlReceived = false;
   var taskCaptures = new TaskCaptures();
@@ -1479,10 +1498,17 @@
     }
   }
   async function requestBody(input, init) {
-    if (typeof init?.body === "string") return init.body;
+    if (typeof init?.body === "string") {
+      return init.body.length <= MAX_REQUEST_BODY_BYTES ? init.body : null;
+    }
     if (input instanceof Request) {
       try {
-        return await input.clone().text();
+        const clonedRequest = input.clone();
+        if (clonedRequest.body) {
+          return await boundedResponseText(clonedRequest, MAX_REQUEST_BODY_BYTES, "request_too_large", now());
+        }
+        const text = await clonedRequest.text();
+        return text.length <= MAX_REQUEST_BODY_BYTES ? text : null;
       } catch {
         return null;
       }
@@ -1490,12 +1516,41 @@
     return null;
   }
   function fieldsSignature(fields) {
-    return JSON.stringify(fields);
+    return [
+      fields.taskKind ?? "",
+      fields.researchReportModel ?? "",
+      fields.researchWidgetId ?? "",
+      fields.researchMessageId ?? "",
+      fields.requestedModel ?? "",
+      fields.responseModelSlug ?? "",
+      fields.defaultModelSlug ?? "",
+      fields.resolvedModelSlug ?? "",
+      fields.serverModelSlug ?? "",
+      fields.domModelSlug ?? "",
+      fields.thinkingEffort ?? "",
+      fields.planType ?? "",
+      fields.requestId ?? "",
+      fields.conversationId ?? "",
+      fields.conversationMode ?? "",
+      fields.selectedSourcesCount ?? "",
+      fields.toolInvoked ?? "",
+      fields.toolName ?? "",
+      fields.isSearch ?? "",
+      fields.hadImage ?? "",
+      fields.fastConvo ?? "",
+      fields.deepResearchRemaining ?? "",
+      fields.deepResearchResetAt ?? "",
+      fields.imageGenRemaining ?? "",
+      fields.imageGenResetAt ?? "",
+      fields.quotaObservedAt ?? ""
+    ].join("\0");
   }
   var pendingLiveCaptures = /* @__PURE__ */ new Map();
   function prunePendingCaptures(timestamp2 = Date.now()) {
     for (const [captureId, pending] of pendingLiveCaptures) {
-      if (!pending.httpActive && pending.expiresAt <= timestamp2) pendingLiveCaptures.delete(captureId);
+      const expiredIdle = !pending.httpActive && pending.expiresAt <= timestamp2;
+      const exceededHardLifetime = timestamp2 - Date.parse(pending.startedAt) > HARD_ACTIVE_CAPTURE_TTL_MS;
+      if (expiredIdle || exceededHardLifetime) pendingLiveCaptures.delete(captureId);
     }
   }
   function registerPendingCapture(captureId, startedAt, correlation, pageUrl, captureContextId) {
@@ -1637,7 +1692,7 @@
     const decoder = new TextDecoder();
     let handedOff = false;
     const parser = new ResponseStreamParser((event) => {
-      if (!event.done && epoch === captureEpoch && canCapture("live", startedAt)) {
+      if (!event.done && !event.unchanged && epoch === captureEpoch && canCapture("live", startedAt)) {
         taskCaptures.rememberStream(captureId, captureContextId, event.value);
       }
       const value = event.value;
@@ -1661,10 +1716,30 @@
       return mergeRouteFields(baseFields, parsed, streamQuota ?? {});
     };
     let lastSignature = fieldsSignature(fields);
+    let totalBytes = 0;
+    let aborted = false;
+    let sizeLimited = false;
     try {
       while (true) {
-        const { value, done } = await reader.read();
+        let chunk;
+        try {
+          chunk = await reader.read();
+        } catch (readError) {
+          if (readError && (readError.name === "AbortError" || readError.code === 20)) {
+            aborted = true;
+            break;
+          }
+          throw readError;
+        }
+        const { value, done } = chunk;
         if (epoch !== captureEpoch || !canCapture("live", startedAt)) return;
+        if (value) {
+          totalBytes += value.byteLength;
+          if (totalBytes > MAX_SSE_STREAM_BYTES) {
+            sizeLimited = true;
+            break;
+          }
+        }
         fields = mergeStreamFields(parser.push(decoder.decode(value, { stream: !done })));
         const signature = fieldsSignature(fields);
         if (signature !== lastSignature) {
@@ -1683,7 +1758,9 @@
         }
         if (done) break;
       }
-      fields = mergeStreamFields(parser.finish());
+      if (!aborted && !sizeLimited) {
+        fields = mergeStreamFields(parser.finish());
+      }
     } finally {
       void reader.cancel().catch(() => void 0);
       inspectionReaders.delete(reader);
@@ -1692,6 +1769,45 @@
         pending.httpActive = false;
         pending.expiresAt = Date.now() + PENDING_CAPTURE_TTL_MS;
       }
+    }
+    if (aborted) {
+      const hasEvidence = Boolean(
+        fields.requestedModel || fields.resolvedModelSlug || fields.serverModelSlug || fields.responseModelSlug || fields.taskKind
+      );
+      if (hasEvidence) {
+        emit({
+          captureId,
+          captureContextId,
+          source: "page_fetch",
+          captureMode: "live",
+          phase: "completed",
+          observedAt: now(),
+          startedAt,
+          completedAt: now(),
+          pageUrl,
+          ...fields
+        });
+      }
+      pendingLiveCaptures.delete(captureId);
+      return;
+    }
+    if (sizeLimited) {
+      const hasRouteEvidence = Boolean(fields.resolvedModelSlug || fields.serverModelSlug || fields.responseModelSlug || fields.taskKind);
+      emit({
+        captureId,
+        captureContextId,
+        source: "page_fetch",
+        captureMode: "live",
+        phase: hasRouteEvidence ? "completed" : "failed",
+        observedAt: now(),
+        startedAt,
+        completedAt: now(),
+        pageUrl,
+        ...!hasRouteEvidence ? { errorCode: "stream_too_large" } : {},
+        ...fields
+      });
+      pendingLiveCaptures.delete(captureId);
+      return;
     }
     emit({
       captureId,
@@ -1866,30 +1982,55 @@
     try {
       response = await downstreamFetch.call(downstreamReceiver, input, init);
     } catch (error) {
-      void requestFieldsPromise.then(() => failed(error instanceof Error ? error.name : "fetch_failed"));
+      void requestFieldsPromise.catch(() => null).then(() => {
+        if (error instanceof Error && error.name === "AbortError") {
+          pendingLiveCaptures.delete(captureId);
+          return;
+        }
+        failed(error instanceof Error ? error.name : "fetch_failed");
+      });
       throw error;
     }
     if (epoch !== captureEpoch || !canCapture(mode, startedAt)) return response;
     const contentType = response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() ?? "";
     const validType = endpoint.kind === "conversation_stream" ? contentType === "text/event-stream" : contentType === "application/json" || /^application\/[\w.-]+\+json$/.test(contentType);
     if (!response.ok || !validType) {
-      void requestFieldsPromise.then(() => failed(!response.ok ? `http_${response.status}` : "unexpected_content_type"));
+      void requestFieldsPromise.catch(() => null).then(() => failed(!response.ok ? `http_${response.status}` : "unexpected_content_type"));
       return response;
     }
     try {
       const clone = response.clone();
-      void requestFieldsPromise.then(async (fields) => {
-        if (epoch !== captureEpoch || !canCapture(mode, startedAt)) {
-          void clone.body?.cancel().catch(() => void 0);
-          return;
-        }
-        if (endpoint.kind === "pow_requirements") await parsePowJson(clone, startedAt, epoch);
-        else if (endpoint.kind === "conversation_init") await parseQuotaJson(clone, startedAt, epoch);
-        else if (endpoint.kind === "conversation_stream") await parseSseStream(clone, captureId, startedAt, fields ?? mergeRouteFields(quotaAtStart), pageUrl, captureContextId, epoch);
-        else if (reloadCandidate) await parseConversationJson(clone, captureId, startedAt, endpoint.conversationId, quotaAtStart, reloadCandidate, epoch);
-      }).catch((error) => failed(error instanceof Error && error.message === "record_too_large" ? "record_too_large" : endpoint.kind === "conversation_stream" ? "stream_parse_failed" : "record_parse_failed"));
+      let cloneConsumed = false;
+      void requestFieldsPromise
+        .catch(() => null)
+        .then(async (fields) => {
+          if (epoch !== captureEpoch || !canCapture(mode, startedAt)) return;
+          if (endpoint.kind === "pow_requirements") {
+            cloneConsumed = true;
+            await parsePowJson(clone, startedAt, epoch);
+          } else if (endpoint.kind === "conversation_init") {
+            cloneConsumed = true;
+            await parseQuotaJson(clone, startedAt, epoch);
+          } else if (endpoint.kind === "conversation_stream") {
+            cloneConsumed = true;
+            await parseSseStream(clone, captureId, startedAt, fields ?? mergeRouteFields(quotaAtStart), pageUrl, captureContextId, epoch);
+          } else if (reloadCandidate) {
+            cloneConsumed = true;
+            await parseConversationJson(clone, captureId, startedAt, endpoint.conversationId, quotaAtStart, reloadCandidate, epoch);
+          }
+        })
+        .catch((error) => {
+          if (error instanceof Error && error.name === "AbortError") {
+            pendingLiveCaptures.delete(captureId);
+            return;
+          }
+          failed(error instanceof Error && error.message === "record_too_large" ? "record_too_large" : endpoint.kind === "conversation_stream" ? "stream_parse_failed" : "record_parse_failed");
+        })
+        .finally(() => {
+          if (!cloneConsumed) void clone.body?.cancel().catch(() => void 0);
+        });
     } catch {
-      void requestFieldsPromise.then(() => failed("response_clone_failed"));
+      void requestFieldsPromise.catch(() => null).then(() => failed("response_clone_failed"));
     }
     return response;
   }
@@ -1960,10 +2101,11 @@
     const parser = new WebSocketRouteParser();
     socket.addEventListener("close", () => parser.clear(), { once: true });
     socket.addEventListener("message", (event) => {
-      if (typeof event.data !== "string" || !canCapture("live")) {
+      if (!canCapture("live")) {
         parser.clear();
         return;
       }
+      if (typeof event.data !== "string") return;
       const raw = event.data;
       queueMicrotask(() => handleWebSocketText(raw, parser));
     });
@@ -2058,11 +2200,19 @@
     for (const method of ["pushState", "replaceState"]) {
       if (!window.history) break;
       const original = window.history[method];
-      window.history[method] = function(...args) {
-        const result = original.apply(this, args);
-        publishContext();
-        return result;
+      if (typeof original !== "function" || original[HISTORY_WRAPPED]) continue;
+      const wrapped = function routeLensHistoryWrapper(...args) {
+        try {
+          return Reflect.apply(original, this, args);
+        } finally {
+          try {
+            publishContext();
+          } catch {
+          }
+        }
       };
+      wrapped[HISTORY_WRAPPED] = true;
+      window.history[method] = wrapped;
     }
   } catch {
   }
@@ -2091,7 +2241,7 @@
     installFetchHook();
     installWebSocketHook();
   }, { once: true });
-  window.setInterval(() => {
+  function runMaintenanceTick() {
     for (const candidate of deferredReloads) {
       if (Date.now() - Date.parse(candidate.startedAt) > EARLY_RELOAD_TTL_MS) deferredReloads.delete(candidate);
     }
@@ -2102,5 +2252,33 @@
     installFetchHook();
     installWebSocketHook();
     prunePendingCaptures();
-  }, 1e3);
+  }
+  var maintenanceTimer = null;
+  function stopMaintenanceTimer() {
+    if (maintenanceTimer === null) return;
+    if (typeof window.clearInterval === "function") window.clearInterval(maintenanceTimer);
+    maintenanceTimer = null;
+  }
+  function syncMaintenanceTimer() {
+    if (document.visibilityState === "hidden") {
+      stopMaintenanceTimer();
+      return;
+    }
+    if (maintenanceTimer === null && typeof window.setInterval === "function") {
+      maintenanceTimer = window.setInterval(runMaintenanceTick, MAINTENANCE_INTERVAL_MS);
+    }
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+      stopMaintenanceTimer();
+      return;
+    }
+    runMaintenanceTick();
+    syncMaintenanceTimer();
+  });
+  window.addEventListener("focus", () => {
+    runMaintenanceTick();
+    syncMaintenanceTimer();
+  });
+  syncMaintenanceTimer();
 })();

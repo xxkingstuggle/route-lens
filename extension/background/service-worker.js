@@ -593,6 +593,10 @@ async function loadState() {
   const uiLanguage = normalizeUiLanguage(candidate.settings?.uiLanguage) ?? browserUiLanguage();
   const theme = ["system", "light", "dark"].includes(candidate.settings?.theme) ? candidate.settings.theme : "system";
   const overlayMode = normalizeOverlayMode(candidate.settings?.overlayMode);
+  const rawRetention = candidate.settings?.retentionLimit;
+  const retentionLimit = Number.isFinite(rawRetention)
+    ? Math.max(10, Math.min(500, Math.round(rawRetention)))
+    : DEFAULT_SETTINGS.retentionLimit;
   return {
     revision: Number.isSafeInteger(candidate.revision) && (candidate.revision ?? 0) >= 0 ? candidate.revision : 0,
     ...candidate.clearedAt ? { clearedAt: candidate.clearedAt } : {},
@@ -606,6 +610,7 @@ async function loadState() {
       ...DEFAULT_SETTINGS,
       ...candidate.settings,
       ...normalizeAppearanceSettings(candidate.settings),
+      retentionLimit,
       captureMode,
       uiLanguage,
       theme,
@@ -845,7 +850,101 @@ chrome.runtime.onInstalled.addListener((details) => {
     })().catch((error) => console.error("Unable to apply the narrow rail defaults.", error));
   }
 });
+var ALLOWED_SETTING_KEYS = new Set([
+  "overlayEnabled",
+  "overlayMode",
+  "overlayMinimized",
+  "theme",
+  "retentionLimit",
+  "includeRequestIdsInExport",
+  "autoCaptureEnabled",
+  "captureMode",
+  "uiLanguage",
+  "railWidthPx",
+  "railHeightPercent",
+  "railPositionPercent",
+  "railFontSizePx",
+  "railOpacityPercent",
+  "showRouteStatus",
+  "showRequestedModel",
+  "showActualModel"
+]);
+var BOOLEAN_SETTING_KEYS = new Set([
+  "overlayEnabled",
+  "overlayMinimized",
+  "includeRequestIdsInExport",
+  "autoCaptureEnabled",
+  "showRouteStatus",
+  "showRequestedModel",
+  "showActualModel"
+]);
+var APPEARANCE_NUMBER_KEYS = new Set([
+  "railWidthPx",
+  "railHeightPercent",
+  "railPositionPercent",
+  "railFontSizePx",
+  "railOpacityPercent"
+]);
+function validateSettingsPatch(rawPatch) {
+  if (!rawPatch || typeof rawPatch !== "object" || Array.isArray(rawPatch)) {
+    return { ok: false, error: "Invalid settings payload." };
+  }
+  const normalizedPatch = {};
+  const appearanceInput = {};
+  for (const [key, value] of Object.entries(rawPatch)) {
+    if (!ALLOWED_SETTING_KEYS.has(key)) {
+      return { ok: false, error: `Unsupported setting: ${key}.` };
+    }
+    if (key === "uiLanguage") {
+      const lang = normalizeUiLanguage(value);
+      if (!lang) return { ok: false, error: "Invalid UI language." };
+      normalizedPatch.uiLanguage = lang;
+      continue;
+    }
+    if (key === "theme") {
+      if (!["system", "light", "dark"].includes(value)) return { ok: false, error: "Invalid theme." };
+      normalizedPatch.theme = value;
+      continue;
+    }
+    if (key === "captureMode") {
+      if (value !== "live" && value !== "reload") return { ok: false, error: "Invalid capture mode." };
+      normalizedPatch.captureMode = value;
+      continue;
+    }
+    if (key === "overlayMode") {
+      if (!["full", "compact", "mini", "docked"].includes(value)) return { ok: false, error: "Invalid overlay mode." };
+      normalizedPatch.overlayMode = value;
+      continue;
+    }
+    if (key === "retentionLimit") {
+      if (typeof value !== "number" || !Number.isFinite(value)) return { ok: false, error: "Invalid retention limit." };
+      normalizedPatch.retentionLimit = Math.max(10, Math.min(500, Math.round(value)));
+      continue;
+    }
+    if (BOOLEAN_SETTING_KEYS.has(key)) {
+      if (typeof value !== "boolean") return { ok: false, error: `Invalid setting: ${key}.` };
+      normalizedPatch[key] = value;
+      if (key.startsWith("show")) appearanceInput[key] = value;
+      continue;
+    }
+    if (APPEARANCE_NUMBER_KEYS.has(key)) {
+      if (typeof value !== "number" || !Number.isFinite(value)) return { ok: false, error: `Invalid appearance setting: ${key}.` };
+      appearanceInput[key] = value;
+    }
+  }
+  if (Object.keys(appearanceInput).length > 0) {
+    const normalizedAppearance = normalizeAppearanceSettings(appearanceInput);
+    for (const key of Object.keys(appearanceInput)) {
+      normalizedPatch[key] = normalizedAppearance[key];
+    }
+  }
+  return { ok: true, settings: normalizedPatch };
+}
 chrome.runtime.onMessage.addListener((raw, sender, sendResponse) => {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    sendResponse({ ok: false, error: "Invalid request." });
+    return false;
+  }
   const request = raw;
   let contentTabId;
   try {
@@ -883,21 +982,16 @@ chrome.runtime.onMessage.addListener((raw, sender, sendResponse) => {
       return sender.tab?.id === void 0 ? { ok: true, state } : { ok: true, state, tabId: sender.tab.id };
     }
     if (request.type === "route:update-settings") {
-      const requestedLanguage = request.settings.uiLanguage;
-      const requestedTheme = request.settings.theme;
-      const uiLanguage = requestedLanguage === void 0 ? void 0 : normalizeUiLanguage(requestedLanguage);
-      if (requestedLanguage !== void 0 && !uiLanguage) return { ok: false, error: "Invalid UI language." };
-      if (requestedTheme !== void 0 && !["system", "light", "dark"].includes(requestedTheme)) return { ok: false, error: "Invalid theme." };
-      const appearanceKeys = ["railWidthPx", "railHeightPercent", "railPositionPercent", "railFontSizePx", "railOpacityPercent", "showRouteStatus", "showRequestedModel", "showActualModel"];
-      const appearanceInput = Object.fromEntries(appearanceKeys.filter((key) => Object.hasOwn(request.settings, key)).map((key) => [key, request.settings[key]]));
-      for (const [key, value] of Object.entries(appearanceInput)) {
-        const expected = key.startsWith("show") ? "boolean" : "number";
-        if (typeof value !== expected || expected === "number" && !Number.isFinite(value)) return { ok: false, error: `Invalid appearance setting: ${key}.` };
-      }
-      const normalizedAppearance = normalizeAppearanceSettings(appearanceInput);
-      const normalizedAppearancePatch = Object.fromEntries(Object.keys(appearanceInput).map((key) => [key, normalizedAppearance[key]]));
-      const settings = { ...request.settings, ...normalizedAppearancePatch, ...(uiLanguage ? { uiLanguage } : {}) };
-      const state = await mutateState((current) => ({ ...current, settings: { ...current.settings, ...settings } }));
+      const validated = validateSettingsPatch(request.settings);
+      if (!validated.ok) return validated;
+      const settings = validated.settings;
+      const state = await mutateState((current) => {
+        const nextSettings = { ...current.settings, ...settings };
+        const turns = settings.retentionLimit !== void 0 && current.turns.length > nextSettings.retentionLimit
+          ? current.turns.slice(0, nextSettings.retentionLimit)
+          : current.turns;
+        return { ...current, turns, settings: nextSettings };
+      });
       await publish(state);
       return { ok: true, state };
     }
