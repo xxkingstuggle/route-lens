@@ -565,6 +565,9 @@
 
   // src/ui/onboarding/index.ts
   var state;
+  function isStaleState(current, next) {
+    return Boolean(current && (next.revision ?? 0) < (current.revision ?? 0));
+  }
   function applyTheme(theme) {
     document.documentElement.dataset.theme = theme === "light" || theme === "dark" ? theme : "system";
   }

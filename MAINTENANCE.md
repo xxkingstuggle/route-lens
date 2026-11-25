@@ -17,7 +17,7 @@ node scripts/export-candidate.mjs
 unzip -t dist/route-lens-*.zip
 ```
 
-`check` 会解析扩展 JSON、检查所有 JavaScript 语法、核对图标路径，并限制扩展权限和站点匹配范围为当前 ChatGPT 域名。`test` 用合成数据回归路由评估边界。`package` 只打包 `extension/`。
+`check` 会解析扩展 JSON、检查扩展/工具/测试脚本语法、扫描禁止的危险 DOM/`eval` 注入点、核对 10 套 `_locales` 与 6 端 `data-i18n` 字典完整性、核对图标路径，并限制扩展权限和站点匹配范围为当前 ChatGPT 域名。`test` 运行 7 套零依赖 `node:test` 套件（路由评估、核心边界、SSE/WebSocket 流解析与隐私防线、Service Worker 并发与导出脱敏、Shadow DOM 侧栏生命周期及 UI/预览契约）。`package` 只打包 `extension/`。
 
 `ui-preview` 在临时无头 Chrome/Chromium 中加载实际 Popup 与 `content/bridge.js`，通过本地合成运行时和聊天页布局验证消息传递、侧栏样式同步和输入框几何关系。合成页面不是 ChatGPT；测试不加载 `page-hook.js` 或扩展 service worker，也不验证真实站点兼容性。截图默认写入 `outputs/route-lens-1.3.1/previews/`，可用 `--out-dir` 或 `ROUTE_LENS_PREVIEW_DIR` 指定。浏览器自动探测，也可设置 `CHROME_PATH`。
 

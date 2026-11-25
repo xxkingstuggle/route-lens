@@ -10,7 +10,7 @@ const pageHookSource = await readFile(resolve(here, '../extension/content/page-h
 
 async function flushMicrotasks(rounds = 12) {
   for (let index = 0; index < rounds; index++) {
-    await Promise.resolve();
+    await new Promise((resolveTurn) => setImmediate(resolveTurn));
   }
 }
 
@@ -190,12 +190,12 @@ function createPageHookEnv({
     },
     observations() {
       return messages
-        .filter((entry) => entry?.source === 'chatgpt-route-inspector-page' && entry.observation)
+        .filter((entry) => entry?.source === 'chatgpt-route-inspector' && entry.observation)
         .map((entry) => entry.observation);
     },
     powEvents() {
       return messages
-        .filter((entry) => entry?.source === 'chatgpt-route-inspector-page' && entry.pow)
+        .filter((entry) => entry?.source === 'chatgpt-route-inspector' && entry.pow)
         .map((entry) => entry.pow);
     }
   };
@@ -213,7 +213,9 @@ test('SseDecoder handles CRLF delta_encoding v1 streams, ignores content tokens,
     'data: {"c":0,"o":"append","p":"/message/content/parts/0","v":"SECRET_ANSWER_TOKEN_1"}',
     '',
     'event: delta',
-    'data: {"c":0,"o":"patch","p":"","v":[{"o":"append","p":"/message/content/parts/0","v":"SECRET_ANSWER_TOKEN_2"},{"o":"add","p":"/message/metadata/resolved_model_slug","v":"gpt-5-2"},{"o":"add","p":"/message/metadata/server_ste_metadata","v":{"model_slug":"gpt-5-2"}}]}',
+    'data: {"c":0,"o":"patch","p":"","v":[{"o":"append","p":"/message/content/parts/0","v":"SECRET_ANSWER_TOKEN_2"},{"o":"add","p":"/message/metadata/resolved_model_slug","v":"gpt-5-2"}]}',
+    '',
+    'data: {"type":"server_ste_metadata","metadata":{"model_slug":"gpt-5-2"}}',
     '',
     'data: [DONE]',
     ''

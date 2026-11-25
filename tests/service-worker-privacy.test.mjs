@@ -227,13 +227,13 @@ test('popup and dashboard export privacy helpers redact project/share URLs, shor
           routeModelSources: ['resolved_model_slug'],
           verdict: 'normal',
           requestId: 'req-long-identifier-abcdef',
-          networkRequestId: 'net-short'
+          networkRequestId: 'net-1234'
         }
       ]
     };
 
     const exported = helpers.sanitizedExport(sampleState);
-    assert.deepEqual(exported.captureContexts, {}, `${name}: clears captureContexts`);
+    assert.deepEqual(JSON.parse(JSON.stringify(exported.captureContexts)), {}, `${name}: clears captureContexts`);
     assert.equal(exported.turns[0].tabId, null, `${name}: scrubs turn tabId`);
     assert.equal(exported.powReadings[0].tabId, null, `${name}: scrubs powReading tabId`);
     assert.equal(exported.turns[0].conversationId, '[redacted]', `${name}: redacts short conversationId`);

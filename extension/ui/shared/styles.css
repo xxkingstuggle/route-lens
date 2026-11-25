@@ -375,7 +375,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   font-size: 13px;
 }
 
-.data-table { width: 100%; min-width: 780px; border-collapse: collapse; font-size: 13px; }
+.data-table { width: 100%; min-width: 860px; border-collapse: collapse; font-size: 13px; }
 .data-table th {
   padding: 10px 14px;
   border-bottom: 1px solid var(--line);
@@ -390,6 +390,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   border-bottom: 1px solid var(--line);
   vertical-align: middle;
 }
+.data-table td:first-child { white-space: nowrap; overflow-wrap: normal; }
+.data-table td:nth-child(2) { white-space: nowrap; }
+.data-table td:nth-child(3),
+.data-table td:nth-child(4),
+.data-table td:nth-child(5) { min-width: 96px; white-space: nowrap; }
+.data-table td:last-child { min-width: 190px; overflow-wrap: break-word; word-break: normal; }
 .data-table tbody tr {
   cursor: pointer;
   transition: background-color .12s ease;
@@ -432,7 +438,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   font: 500 12px/1.45 var(--mono);
   overflow-wrap: anywhere;
 }
-.evidence-label { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; min-width: 0; }
+.evidence-label { display: inline-flex; flex-wrap: nowrap; align-items: baseline; gap: 3px; min-width: 0; }
 .evidence-note {
   padding: 0 3px;
   border-radius: 4px;

@@ -1113,11 +1113,10 @@
     aside.lang = language === "zh" ? "zh-CN" : "en";
     aside.setAttribute("role", "complementary");
     aside.setAttribute("aria-label", language === "zh" ? "路由状态" : "Route status");
-    aside.style.setProperty("--ri-width", `${geometry.width}px`);
-    aside.style.setProperty("--ri-height-percent", String(heightPercent));
-    aside.style.setProperty("--ri-position", String(verticalPosition));
-    aside.style.setProperty("--ri-font-size", `${appearance.railFontSizePx ?? 10}px`);
-    aside.style.setProperty("--ri-opacity", `${appearance.railOpacityPercent ?? 92}%`);
+    aside.setAttribute(
+      "style",
+      `--ri-width:${geometry.width}px;--ri-height-percent:${heightPercent};--ri-position:${verticalPosition};--ri-font-size:${appearance.railFontSizePx ?? 10}px;--ri-opacity:${appearance.railOpacityPercent ?? 92}%`
+    );
 
     const previousScrollTop = scroll.scrollTop;
     const blocks = [];
