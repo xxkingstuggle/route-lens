@@ -7,6 +7,12 @@
     if (PROJECT_CONVERSATION_PATH.test(pathname)) {
       return pathname.replace(/^\/g\/[^/]+\/c\/[^/]+/, "/g/[redacted]/c/[redacted]");
     }
+    if (/^\/g\/[^/]+(?=\/|$)/.test(pathname)) {
+      return pathname.replace(/^\/g\/[^/]+/, "/g/[redacted]");
+    }
+    if (/^\/share\/[^/]+(?=\/|$)/.test(pathname)) {
+      return pathname.replace(/^\/share\/[^/]+/, "/share/[redacted]");
+    }
     if (STANDARD_CONVERSATION_PATH.test(pathname)) {
       return pathname.replace(/^\/c\/[^/]+/, "/c/[redacted]");
     }
@@ -16,7 +22,12 @@
   // src/core/privacy.ts
   function redactedId(value) {
     if (!value) return null;
-    return `[redacted:${value.slice(-6)}]`;
+    const str = String(value);
+    if (str.length <= 8) return "[redacted]";
+    return `[redacted:${str.slice(-6)}]`;
+  }
+  function escapeMarkdownCell(value) {
+    return String(value ?? "").replace(/\r?\n/g, " ").replace(/\|/g, "\\|");
   }
   function sanitizePageUrl(value) {
     if (!value) return null;
@@ -39,6 +50,7 @@
       ...turn,
       captureId: "[redacted]",
       ...turn.captureContextId ? { captureContextId: "[redacted]" } : {},
+      tabId: null,
       pageUrl: sanitizePageUrl(turn.pageUrl),
       conversationId: redactedId(turn.conversationId),
       researchWidgetId: redactedId(turn.researchWidgetId),
@@ -51,6 +63,12 @@
     return {
       ...state2,
       captureContexts: {},
+      powReadings: (state2.powReadings || []).map((reading) => ({
+        rawHex: reading.rawHex,
+        decimal: reading.decimal,
+        observedAt: reading.observedAt,
+        tabId: null
+      })),
       turns: state2.turns.map((turn, index) => ({
         ...sanitizeTurn(turn, state2.settings.includeRequestIdsInExport),
         captureId: `capture-${index + 1}`
@@ -81,7 +99,7 @@
       const unknown = chinese ? "\u672A\u77E5" : "Unknown";
       const none = chinese ? "\u65E0" : "None";
       const label = turn.modelLabelConflict ? chinese ? "\u6807\u7B7E\u5B57\u6BB5\u4E0D\u4E00\u81F4" : "Label fields disagree" : turn.modelLabel ?? unknown;
-      lines.push(`| ${turn.observedAt} | ${turn.captureMode} | ${turn.requestedModel ?? unknown} | ${label} | ${turn.routeModel ?? unknown} | ${turn.routeModelSources.join(" + ") || none} | ${turn.verdict} | ${turn.requestId ?? none} |`);
+      lines.push(`| ${escapeMarkdownCell(turn.observedAt)} | ${escapeMarkdownCell(turn.captureMode)} | ${escapeMarkdownCell(turn.requestedModel ?? unknown)} | ${escapeMarkdownCell(label)} | ${escapeMarkdownCell(turn.routeModel ?? unknown)} | ${escapeMarkdownCell(turn.routeModelSources.join(" + ") || none)} | ${escapeMarkdownCell(turn.verdict)} | ${escapeMarkdownCell(turn.requestId ?? none)} |`);
     }
     for (const turn of exported.turns.filter((item) => item.taskKind === "deep_research")) lines.push("", chinese ? `${turn.observedAt} \xB7 \u89C4\u5212\u6A21\u578B\uFF1A${turn.routeModel ?? "\u2014"}\uFF1B\u62A5\u544A\u6A21\u578B\uFF1A${turn.researchReportModel ?? "\u2014"}` : `${turn.observedAt} \xB7 Planning model: ${turn.routeModel ?? "\u2014"}; Report model: ${turn.researchReportModel ?? "\u2014"}`);
     lines.push("", chinese ? "> \u672C\u62A5\u544A\u53EA\u5305\u542B\u5141\u8BB8\u5B57\u6BB5\uFF0C\u4E0D\u5305\u542B\u63D0\u793A\u8BCD\u3001\u56DE\u7B54\u6B63\u6587\u3001Cookie\u3001Authorization \u6216\u4EE4\u724C\u3002" : "> This report contains allowlisted fields only. It excludes prompts, answer text, cookies, Authorization headers, and tokens.");
@@ -651,15 +669,6 @@
     if (!response.ok || !response.state) throw new Error(response.error ?? "Unable to read extension state.");
     return response.state;
   }
-  function escapeHtml(value) {
-    return String(value ?? "\u2014").replace(/[&<>'"]/g, (char) => ({
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      "'": "&#39;",
-      '"': "&quot;"
-    })[char] ?? char);
-  }
   function modelLabel(model, language) {
     if (!model) return t(language, "value.unresolved");
     return model.replace(/^gpt-/, "GPT ").replace(/-(\d)/g, ".$1").replace(/-pro$/i, " Pro").replace(/-mini$/i, " mini").replace(/-sol$/i, " Sol");
@@ -748,21 +757,20 @@
   };
   var versionLabel = document.querySelector("#dashboard-version");
   if (versionLabel) {
-    const version = chrome.runtime.getManifest().version;
-    versionLabel.textContent = `v${version}`;
+    const version = chrome.runtime?.getManifest?.()?.version;
+    if (version) versionLabel.textContent = `v${version}`;
   }
   function quotaTime(value, language) {
     if (!value || !Number.isFinite(Date.parse(value))) return t(language, "quota.notCaptured");
-    const formatted = new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : "en-GB", {
-      timeZone: "Asia/Shanghai",
+    return new Intl.DateTimeFormat(language === "zh" ? "zh-CN" : "en-GB", {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
       hour: "2-digit",
       minute: "2-digit",
-      hourCycle: "h23"
+      hourCycle: "h23",
+      timeZoneName: "short"
     }).format(new Date(value));
-    return `${formatted} ${language === "zh" ? "\uFF08\u5317\u4EAC\u65F6\u95F4\uFF09" : "(UTC+08:00)"}`;
   }
   function toast(message) {
     const element = document.querySelector("#toast");
@@ -781,12 +789,22 @@
   function selectedTurn(turns) {
     return turns.find((turn) => turn.captureId === selectedId) ?? turns[0] ?? null;
   }
+  function createElement(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== void 0) node.textContent = String(text);
+    return node;
+  }
+  function applyTheme(theme) {
+    document.documentElement.dataset.theme = theme === "light" || theme === "dark" ? theme : "system";
+  }
   function renderDetail(turn, language) {
     const detail = document.querySelector("#detail");
     const tag = document.querySelector("#detail-tag");
     if (!detail || !tag) return;
     if (!turn) {
-      detail.innerHTML = `<div class="panel-empty">${escapeHtml(t(language, "dashboard.selectRecord"))}</div>`;
+      detail.replaceChildren(createElement("div", "panel-empty", t(language, "dashboard.selectRecord")));
+      tag.className = "tag amber";
       tag.textContent = t(language, "result.unknown");
       return;
     }
@@ -827,54 +845,157 @@
       ["field.planningModel", turn.routeModel ?? "\u2014"],
       ["field.reportModel", turn.researchReportModel ?? "\u2014"]
     );
-    detail.innerHTML = `<div class="evidence-list">${availableItems.map(([label, value]) => {
+    const list = createElement("div", "evidence-list");
+    for (const [label, value] of availableItems) {
       const isAssistantLabel = label === "detail.assistantMetadataLabel";
-      const quotaHint = evidenceFieldHints[label]?.startsWith("limits_progress") ? `${evidenceFieldHints[label]}
-${t(language, "quota.snapshotHint", { time: quotaTime(turn.quotaObservedAt, language) })}` : null;
+      const quotaHint = evidenceFieldHints[label]?.startsWith("limits_progress")
+        ? `${evidenceFieldHints[label]}\n${t(language, "quota.snapshotHint", { time: quotaTime(turn.quotaObservedAt, language) })}`
+        : null;
       const hint = isAssistantLabel ? t(language, "detail.assistantReferenceHint") : quotaHint ?? evidenceFieldHints[label];
-      const name = `<small${hint ? ` title="${escapeHtml(hint)}"` : ""}>${escapeHtml(t(language, label))}</small>`;
-      const labelHtml = isAssistantLabel ? `<div class="evidence-label">${name}<sup class="evidence-note" tabindex="0" title="${escapeHtml(hint)}" aria-label="${escapeHtml(hint)}">*</sup></div>` : name;
-      return `<div class="evidence">${labelHtml}<code>${escapeHtml(value)}</code></div>`;
-    }).join("")}</div>`;
+      const row = createElement("div", "evidence");
+      const name = createElement("small", "", t(language, label));
+      if (hint) name.title = hint;
+      if (isAssistantLabel) {
+        const wrapper = createElement("div", "evidence-label");
+        const note = createElement("sup", "evidence-note", "*");
+        note.tabIndex = 0;
+        if (hint) {
+          note.title = hint;
+          note.setAttribute("aria-label", hint);
+        }
+        wrapper.append(name, note);
+        row.append(wrapper);
+      } else {
+        row.append(name);
+      }
+      row.append(createElement("code", "", value ?? "\u2014"));
+      list.append(row);
+    }
+    detail.replaceChildren(list);
+  }
+  function buildFilterButtons(items, activeValue, dataKey, language) {
+    return items.map(([value, labelKey]) => {
+      const button = createElement("button", `filter-button${activeValue === value ? " active" : ""}`, t(language, labelKey));
+      button.type = "button";
+      button.dataset[dataKey] = value;
+      button.setAttribute("aria-pressed", String(activeValue === value));
+      return button;
+    });
   }
   function render(next) {
     if (isStaleState(state, next)) return;
     state = next;
     const language = state.settings.uiLanguage;
+    applyTheme(state.settings.theme);
     applyStaticTranslations(language);
     const total = state.turns.length;
     const live = state.turns.filter((turn) => turn.captureMode === "live").length;
     const reload = state.turns.filter((turn) => turn.captureMode === "reload").length;
     const anomaly = state.turns.filter((turn) => turn.verdict === "mismatch" || turn.verdict === "conflict").length;
-    document.querySelector("#summary").innerHTML = `<div class="readout"><small>${escapeHtml(t(language, "summary.total"))}</small><b>${total}</b></div><div class="readout"><small>${escapeHtml(t(language, "summary.live"))}</small><b class="signal-text">${live}</b></div><div class="readout"><small>${escapeHtml(t(language, "summary.reload"))}</small><b class="amber-text">${reload}</b></div><div class="readout"><small>${escapeHtml(t(language, "summary.anomalies"))}</small><b class="danger-text">${anomaly}</b></div>`;
+    const summary = document.querySelector("#summary");
+    if (summary) {
+      const cards = [
+        ["summary.total", total, ""],
+        ["summary.live", live, "signal-text"],
+        ["summary.reload", reload, "amber-text"],
+        ["summary.anomalies", anomaly, "danger-text"]
+      ].map(([labelKey, count, valueClass]) => {
+        const card = createElement("div", "readout");
+        card.append(
+          createElement("small", "", t(language, labelKey)),
+          createElement("b", valueClass, count)
+        );
+        return card;
+      });
+      summary.replaceChildren(...cards);
+    }
     const verdictFilters = [["all", "filter.allVerdicts"], ["normal", "filter.normal"], ["auto_reasoning", "filter.autoReasoning"], ["work_unverifiable", "filter.workUnverifiable"], ["mismatch", "filter.mismatch"], ["conflict", "filter.conflict"], ["unknown", "filter.unknown"]];
     const modeFilters = [["all", "filter.allModes"], ["live", "mode.live"], ["reload", "mode.reload"]];
     verdictFilters.splice(3, 0, ["image_generation", "result.imageGeneration"], ["deep_research", "result.deepResearch"]);
-    document.querySelector("#filters").innerHTML = verdictFilters.map(([value, label]) => `<button class="filter-button ${filter === value ? "active" : ""}" data-filter="${value}">${escapeHtml(t(language, label))}</button>`).join("");
-    document.querySelector("#mode-filters").innerHTML = modeFilters.map(([value, label]) => `<button class="filter-button ${modeFilter === value ? "active" : ""}" data-mode-filter="${value}">${escapeHtml(t(language, label))}</button>`).join("");
+    document.querySelector("#filters")?.replaceChildren(...buildFilterButtons(verdictFilters, filter, "filter", language));
+    document.querySelector("#mode-filters")?.replaceChildren(...buildFilterButtons(modeFilters, modeFilter, "modeFilter", language));
     const visible = state.turns.filter(
       (turn) => (filter === "all" || turn.verdict === filter) && (modeFilter === "all" || turn.captureMode === modeFilter)
     );
     if (!visible.some((turn) => turn.captureId === selectedId)) selectedId = visible[0]?.captureId ?? null;
     const rows = document.querySelector("#rows");
     const empty = document.querySelector("#empty");
-    if (rows) rows.innerHTML = visible.map((turn) => `<tr data-id="${escapeHtml(turn.captureId)}" class="${selectedId === turn.captureId ? "selected" : ""}"><td class="mono">${escapeHtml(formatTime(turn.observedAt, language))}</td><td><span class="tag ${turn.captureMode === "live" ? "signal" : "amber"}">${escapeHtml(captureModeLabel(turn.captureMode, language))}</span></td><td>${escapeHtml(requestedModelLabel(turn, language))}</td><td>${escapeHtml(recordedModelLabel(turn, language))}</td><td>${escapeHtml(turn.verdict === "conflict" ? t(language, "result.routeConflict") : turn.routeModel ? modelLabel(turn.routeModel, language) : t(language, "value.inconclusive"))}</td><td><span class="tag ${verdictTone(turn.verdict)}">${escapeHtml(turnResultLabel(turn, language))}</span></td><td class="mono muted">${escapeHtml(routeSourcesLabel(turn, language))}</td></tr>`).join("");
+    if (rows) {
+      const rowNodes = visible.map((turn) => {
+        const tr = document.createElement("tr");
+        tr.dataset.id = turn.captureId;
+        tr.tabIndex = 0;
+        if (selectedId === turn.captureId) {
+          tr.className = "selected";
+          tr.setAttribute("aria-selected", "true");
+        }
+        const modeCell = document.createElement("td");
+        modeCell.append(createElement("span", `tag ${turn.captureMode === "live" ? "signal" : "amber"}`, captureModeLabel(turn.captureMode, language)));
+        const routeText = turn.verdict === "conflict"
+          ? t(language, "result.routeConflict")
+          : turn.routeModel ? modelLabel(turn.routeModel, language) : t(language, "value.inconclusive");
+        const verdictCell = document.createElement("td");
+        verdictCell.append(createElement("span", `tag ${verdictTone(turn.verdict)}`, turnResultLabel(turn, language)));
+        tr.append(
+          createElement("td", "mono", formatTime(turn.observedAt, language)),
+          modeCell,
+          createElement("td", "", requestedModelLabel(turn, language)),
+          createElement("td", "", recordedModelLabel(turn, language)),
+          createElement("td", "", routeText),
+          verdictCell,
+          createElement("td", "mono muted", routeSourcesLabel(turn, language))
+        );
+        return tr;
+      });
+      rows.replaceChildren(...rowNodes);
+    }
     if (empty) empty.style.display = visible.length ? "none" : "block";
     renderDetail(selectedTurn(visible), language);
-    document.querySelector("#health").innerHTML = `<div class="timeline"><div class="timeline-item signal"><strong>${escapeHtml(t(language, "health.lastSuccess"))}</strong><p>${escapeHtml(formatTime(state.parserHealth.lastSuccessAt, language))}</p></div><div class="timeline-item ${state.parserHealth.consecutiveFailures ? "danger" : ""}"><strong>${escapeHtml(t(language, "health.lastFailure"))}</strong><p>${escapeHtml(formatTime(state.parserHealth.lastFailureAt, language))} \xB7 ${escapeHtml(t(language, "health.failures", { count: state.parserHealth.consecutiveFailures }))}</p></div><div class="timeline-item"><strong>${escapeHtml(t(language, "health.activeMode"))}</strong><p>${escapeHtml(captureModeLabel(state.settings.captureMode, language))}</p></div></div>`;
-    document.querySelectorAll("[data-filter]").forEach((button) => button.addEventListener("click", () => {
-      filter = button.dataset.filter;
-      render(state);
-    }));
-    document.querySelectorAll("[data-mode-filter]").forEach((button) => button.addEventListener("click", () => {
-      modeFilter = button.dataset.modeFilter;
-      render(state);
-    }));
-    document.querySelectorAll("[data-id]").forEach((row) => row.addEventListener("click", () => {
-      selectedId = row.dataset.id ?? null;
-      render(state);
-    }));
+    const health = document.querySelector("#health");
+    if (health) {
+      const timeline = createElement("div", "timeline");
+      const items = [
+        ["signal", t(language, "health.lastSuccess"), formatTime(state.parserHealth.lastSuccessAt, language)],
+        [
+          state.parserHealth.consecutiveFailures ? "danger" : "",
+          t(language, "health.lastFailure"),
+          `${formatTime(state.parserHealth.lastFailureAt, language)} \xB7 ${t(language, "health.failures", { count: state.parserHealth.consecutiveFailures })}`
+        ],
+        ["", t(language, "health.activeMode"), captureModeLabel(state.settings.captureMode, language)]
+      ];
+      for (const [toneClass, heading, text] of items) {
+        const item = createElement("div", toneClass ? `timeline-item ${toneClass}` : "timeline-item");
+        item.append(createElement("strong", "", heading), createElement("p", "", text));
+        timeline.append(item);
+      }
+      health.replaceChildren(timeline);
+    }
   }
+  document.querySelector("#filters")?.addEventListener("click", (event) => {
+    const button = event.target instanceof Element ? event.target.closest("[data-filter]") : null;
+    if (!button || !state) return;
+    filter = button.dataset.filter;
+    render(state);
+  });
+  document.querySelector("#mode-filters")?.addEventListener("click", (event) => {
+    const button = event.target instanceof Element ? event.target.closest("[data-mode-filter]") : null;
+    if (!button || !state) return;
+    modeFilter = button.dataset.modeFilter;
+    render(state);
+  });
+  const rowsContainer = document.querySelector("#rows");
+  const selectRowFromEvent = (event) => {
+    const row = event.target instanceof Element ? event.target.closest("tr[data-id]") : null;
+    if (!row || !state) return;
+    selectedId = row.dataset.id ?? null;
+    render(state);
+  };
+  rowsContainer?.addEventListener("click", selectRowFromEvent);
+  rowsContainer?.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    event.preventDefault();
+    selectRowFromEvent(event);
+  });
   bindLanguageSwitch(async (uiLanguage) => {
     if (state?.settings.uiLanguage === uiLanguage) return;
     const response = await send({ type: "route:update-settings", settings: { uiLanguage } });

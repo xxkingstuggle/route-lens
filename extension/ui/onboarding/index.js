@@ -565,8 +565,13 @@
 
   // src/ui/onboarding/index.ts
   var state;
+  function applyTheme(theme) {
+    document.documentElement.dataset.theme = theme === "light" || theme === "dark" ? theme : "system";
+  }
   function render(next) {
+    if (isStaleState(state, next)) return;
     state = next;
+    applyTheme(state.settings.theme);
     applyStaticTranslations(state.settings.uiLanguage);
   }
   bindLanguageSwitch(async (uiLanguage) => {

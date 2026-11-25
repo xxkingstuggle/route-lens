@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="system">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -14,6 +14,31 @@
         <button type="button" data-language="en" aria-pressed="false">EN</button><button type="button" data-language="zh" aria-pressed="true">中</button>
       </div>
     </header>
+    <section class="panel preview-panel" aria-labelledby="preview-heading">
+      <div class="panel-heading">
+        <div>
+          <h2 id="preview-heading" data-i18n="appearance.previewTitle">侧栏实时预览</h2>
+          <p data-i18n="appearance.previewHint">拖动下方滑块时实时预览尺寸、位置与显示项</p>
+        </div>
+        <span id="preview-metrics" class="preview-metrics">72 px · 75% · 92%</span>
+      </div>
+      <div class="preview-viewport" aria-hidden="true">
+        <div class="preview-chrome"><span></span><span></span><span></span><small>chatgpt.com</small></div>
+        <div class="preview-stage">
+          <div class="preview-chat">
+            <div class="preview-bubble user"></div>
+            <div class="preview-bubble assistant"></div>
+            <div class="preview-bubble assistant short"></div>
+            <div class="preview-composer"></div>
+          </div>
+          <aside id="preview-rail" class="preview-rail">
+            <div id="preview-status" class="preview-rail-status"><i class="preview-dot"></i><span data-i18n="appearance.previewMatch">一致</span></div>
+            <div id="preview-requested" class="preview-rail-block"><small data-i18n="appearance.previewRequestedShort">请求</small><b>GPT 5.2</b></div>
+            <div id="preview-actual" class="preview-rail-block"><small data-i18n="appearance.previewActualShort">报告</small><b>GPT 5.2</b></div>
+          </aside>
+        </div>
+      </div>
+    </section>
     <section class="panel">
       <div class="panel-heading"><div><h2 data-i18n="appearance.layout">侧栏尺寸与位置</h2><p data-i18n="appearance.layoutHint">调整后会立即应用并保存</p></div><span id="save-status" class="save-status" role="status" data-i18n="appearance.saved">已保存</span></div>
       <div class="slider-list">

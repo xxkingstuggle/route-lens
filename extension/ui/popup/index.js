@@ -32,6 +32,12 @@
     if (PROJECT_CONVERSATION_PATH.test(pathname)) {
       return pathname.replace(/^\/g\/[^/]+\/c\/[^/]+/, "/g/[redacted]/c/[redacted]");
     }
+    if (/^\/g\/[^/]+(?=\/|$)/.test(pathname)) {
+      return pathname.replace(/^\/g\/[^/]+/, "/g/[redacted]");
+    }
+    if (/^\/share\/[^/]+(?=\/|$)/.test(pathname)) {
+      return pathname.replace(/^\/share\/[^/]+/, "/share/[redacted]");
+    }
     if (STANDARD_CONVERSATION_PATH.test(pathname)) {
       return pathname.replace(/^\/c\/[^/]+/, "/c/[redacted]");
     }
@@ -41,7 +47,13 @@
   // Privacy helpers
   function redactedId(value) {
     if (!value) return null;
-    return `[redacted:${value.slice(-6)}]`;
+    const str = String(value);
+    if (str.length <= 8) return "[redacted]";
+    return `[redacted:${str.slice(-6)}]`;
+  }
+
+  function escapeMarkdownCell(value) {
+    return String(value ?? "").replace(/\r?\n/g, " ").replace(/\|/g, "\\|");
   }
 
   function sanitizePageUrl(value) {
@@ -63,6 +75,7 @@
       ...turn,
       captureId: "[redacted]",
       ...(turn.captureContextId ? { captureContextId: "[redacted]" } : {}),
+      tabId: null,
       pageUrl: sanitizePageUrl(turn.pageUrl),
       conversationId: redactedId(turn.conversationId),
       researchWidgetId: redactedId(turn.researchWidgetId),
@@ -76,6 +89,12 @@
     return {
       ...state,
       captureContexts: {},
+      powReadings: (state.powReadings || []).map((reading) => ({
+        rawHex: reading.rawHex,
+        decimal: reading.decimal,
+        observedAt: reading.observedAt,
+        tabId: null
+      })),
       turns: (state.turns || []).map((turn, index) => ({
         ...sanitizeTurn(turn, state.settings?.includeRequestIdsInExport),
         captureId: `capture-${index + 1}`
@@ -108,7 +127,7 @@
       const unknown = chinese ? "未知" : "Unknown";
       const none = chinese ? "无" : "None";
       const label = turn.modelLabelConflict ? (chinese ? "标签字段不一致" : "Label fields disagree") : (turn.modelLabel ?? unknown);
-      lines.push(`| ${turn.observedAt} | ${turn.captureMode} | ${turn.requestedModel ?? unknown} | ${label} | ${turn.routeModel ?? unknown} | ${turn.routeModelSources.join(" + ") || none} | ${turn.verdict} | ${turn.requestId ?? none} |`);
+      lines.push(`| ${escapeMarkdownCell(turn.observedAt)} | ${escapeMarkdownCell(turn.captureMode)} | ${escapeMarkdownCell(turn.requestedModel ?? unknown)} | ${escapeMarkdownCell(label)} | ${escapeMarkdownCell(turn.routeModel ?? unknown)} | ${escapeMarkdownCell(turn.routeModelSources.join(" + ") || none)} | ${escapeMarkdownCell(turn.verdict)} | ${escapeMarkdownCell(turn.requestId ?? none)} |`);
     }
 
     for (const turn of exported.turns.filter((item) => item.taskKind === "deep_research")) {
@@ -239,6 +258,7 @@
     "button.options": "设置与隐私",
     "footer.records": "{{count}} 条记录",
     "toast.summaryCopied": "已复制本轮摘要。",
+    "toast.copyFailed": "复制失败，请重试。",
     "toast.noRecord": "暂无记录可复制。",
     "toast.modeLive": "已切换到实时请求。",
     "toast.modeReload": "已切换到会话重载，请刷新会话。",
@@ -330,6 +350,7 @@
     "button.options": "Settings & privacy",
     "footer.records": "{{count}} records",
     "toast.summaryCopied": "Summary copied.",
+    "toast.copyFailed": "Could not copy summary.",
     "toast.noRecord": "No record to copy.",
     "toast.modeLive": "Switched to live request mode.",
     "toast.modeReload": "Switched to reload session; reload the conversation.",
@@ -765,35 +786,46 @@
 
     // Details List
     if (detailList) {
-      const items = [];
+      const nodes = [];
+      const appendDetailRow = (termText, valueText, titleText) => {
+        const dt = document.createElement("dt");
+        dt.textContent = termText;
+        const dd = document.createElement("dd");
+        dd.textContent = valueText;
+        if (titleText) dd.title = titleText;
+        nodes.push(dt, dd);
+      };
       if (turn) {
-        items.push(`<dt>${escapeHtml(t(language, "field.mode"))}</dt><dd>${escapeHtml(mode === "live" ? t(language, "mode.live") : t(language, "mode.reload"))}</dd>`);
-        items.push(`<dt>${escapeHtml(t(language, "field.duration"))}</dt><dd>${escapeHtml(formatDuration(turn.durationMs))}</dd>`);
-        items.push(`<dt>${escapeHtml(t(language, "field.adapter"))}</dt><dd>${escapeHtml(turn.sources?.join(" + ") || "—")}</dd>`);
-        items.push(`<dt>${escapeHtml(t(language, "field.route"))}</dt><dd>${escapeHtml(turn.routeModelSources?.join(" + ") || t(language, "value.noRouteField"))}</dd>`);
+        appendDetailRow(t(language, "field.mode"), mode === "live" ? t(language, "mode.live") : t(language, "mode.reload"));
+        appendDetailRow(t(language, "field.duration"), formatDuration(turn.durationMs));
+        appendDetailRow(t(language, "field.adapter"), turn.sources?.join(" + ") || "—");
+        appendDetailRow(t(language, "field.route"), turn.routeModelSources?.join(" + ") || t(language, "value.noRouteField"));
 
         const labelText = turn.modelLabelConflict ? t(language, "value.labelConflict") : (turn.modelLabel || t(language, "value.noLabelField"));
-        items.push(`<dt>${escapeHtml(t(language, "field.label"))}</dt><dd>${escapeHtml(labelText)}</dd>`);
+        appendDetailRow(t(language, "field.label"), labelText);
 
         if (turn.taskKind === "deep_research") {
-          items.push(`<dt>${escapeHtml(t(language, "field.planningModel"))}</dt><dd>${escapeHtml(turn.routeModel || "—")}</dd>`);
-          items.push(`<dt>${escapeHtml(t(language, "field.reportModel"))}</dt><dd>${escapeHtml(turn.researchReportModel || "—")}</dd>`);
+          appendDetailRow(t(language, "field.planningModel"), turn.routeModel || "—");
+          appendDetailRow(t(language, "field.reportModel"), turn.researchReportModel || "—");
         }
 
         if (turn.requestId) {
-          items.push(`<dt>${escapeHtml(t(language, "field.requestId"))}</dt><dd title="${escapeHtml(turn.requestId)}">${escapeHtml(turn.requestId)}</dd>`);
+          appendDetailRow(t(language, "field.requestId"), turn.requestId, turn.requestId);
         }
       }
 
       // PoW Difficulty
       if (pow) {
-        items.push(`<dt>${escapeHtml(t(language, "pow.inline"))}</dt><dd>HEX: ${escapeHtml(pow.rawHex)} · DEC: ${escapeHtml(pow.decimal)}</dd>`);
-        items.push(`<dd class="full-width">${escapeHtml(t(language, "pow.recommendation"))}</dd>`);
+        appendDetailRow(t(language, "pow.inline"), `HEX: ${pow.rawHex} · DEC: ${pow.decimal}`);
+        const note = document.createElement("dd");
+        note.className = "full-width";
+        note.textContent = t(language, "pow.recommendation");
+        nodes.push(note);
       } else {
-        items.push(`<dt>${escapeHtml(t(language, "pow.inline"))}</dt><dd>${escapeHtml(t(language, "pow.notCaptured"))}</dd>`);
+        appendDetailRow(t(language, "pow.inline"), t(language, "pow.notCaptured"));
       }
 
-      detailList.innerHTML = items.join("");
+      detailList.replaceChildren(...nodes);
     }
   }
 
@@ -853,8 +885,12 @@
       return;
     }
     const report = buildMarkdownReport({ ...state, turns: [turn] }, state.settings.uiLanguage);
-    await navigator.clipboard.writeText(report);
-    showToast(t(state.settings.uiLanguage, "toast.summaryCopied"));
+    try {
+      await navigator.clipboard.writeText(report);
+      showToast(t(state.settings.uiLanguage, "toast.summaryCopied"));
+    } catch {
+      showToast(t(state.settings.uiLanguage, "toast.copyFailed"));
+    }
   });
 
   // Appearance Inputs
@@ -887,6 +923,11 @@
     queueAppearancePatch(appearanceDefaults);
     flushAppearancePatch();
     showToast(t(state?.settings?.uiLanguage ?? "zh", "toast.appearanceReset"));
+  });
+
+  window.addEventListener("pagehide", flushAppearancePatch);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") flushAppearancePatch();
   });
 
   // Initialization

@@ -571,6 +571,7 @@
   // src/ui/options/index.ts
   var state;
   var controlsInitialized = false;
+  var controlsDirty = false;
   function input(selector) {
     return document.querySelector(selector);
   }
@@ -580,15 +581,24 @@
     element.classList.add("show");
     window.setTimeout(() => element.classList.remove("show"), 1800);
   }
+  function applyTheme(theme) {
+    document.documentElement.dataset.theme = theme === "light" || theme === "dark" ? theme : "system";
+  }
   function render(next, syncControls = false) {
     if (isStaleState(state, next)) return;
     state = next;
+    applyTheme(state.settings.theme);
     applyStaticTranslations(state.settings.uiLanguage);
-    if (!syncControls && controlsInitialized) return;
+    if (!syncControls && controlsInitialized && controlsDirty) return;
     controlsInitialized = true;
+    controlsDirty = false;
     input("#auto").checked = state.settings.autoCaptureEnabled;
     input("#retention").value = String(state.settings.retentionLimit);
     input("#ids").value = String(state.settings.includeRequestIdsInExport);
+  }
+  for (const selector of ["#auto", "#retention", "#ids"]) {
+    input(selector)?.addEventListener("input", () => { controlsDirty = true; });
+    input(selector)?.addEventListener("change", () => { controlsDirty = true; });
   }
   bindLanguageSwitch(async (uiLanguage) => {
     if (state?.settings.uiLanguage === uiLanguage) return;
