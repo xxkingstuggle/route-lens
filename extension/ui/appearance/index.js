@@ -40,7 +40,12 @@
       "appearance.actualModel": "\u670d\u52a1\u5668\u62a5\u544a\u6a21\u578b",
       "appearance.footer": "仅调整外观。记录、采集模式和隐私设置不会改变。",
       "appearance.reset": "恢复默认外观",
-      "appearance.error": "保存失败，请重试"
+      "appearance.error": "保存失败，请重试",
+      "appearance.previewTitle": "侧栏实时预览",
+      "appearance.previewHint": "拖动下方滑块时实时预览尺寸、位置与显示项",
+      "appearance.previewMatch": "一致",
+      "appearance.previewRequestedShort": "请求",
+      "appearance.previewActualShort": "报告"
     },
     en: {
       "language.label": "Language",
@@ -70,7 +75,12 @@
       "appearance.actualModel": "Server-reported model",
       "appearance.footer": "Appearance only. Records, capture mode, and privacy settings stay unchanged.",
       "appearance.reset": "Restore default appearance",
-      "appearance.error": "Save failed. Try again."
+      "appearance.error": "Save failed. Try again.",
+      "appearance.previewTitle": "Live sidebar preview",
+      "appearance.previewHint": "Preview size, position, and visible fields as you adjust controls",
+      "appearance.previewMatch": "Match",
+      "appearance.previewRequestedShort": "Req",
+      "appearance.previewActualShort": "Rpt"
     }
   };
   let state = null;
@@ -79,6 +89,12 @@
   let writeChain = Promise.resolve();
   let statusTimer = null;
   const saveStatus = document.querySelector("#save-status");
+  const previewRail = document.querySelector("#preview-rail");
+  const previewStage = document.querySelector(".preview-stage");
+  const previewMetrics = document.querySelector("#preview-metrics");
+  const previewStatus = document.querySelector("#preview-status");
+  const previewRequested = document.querySelector("#preview-requested");
+  const previewActual = document.querySelector("#preview-actual");
 
   function t(language, key) {
     return COPY[language]?.[key] ?? COPY.en[key] ?? key;
@@ -101,8 +117,25 @@
     if (saveStatus?.dataset.saving !== "true") saveStatus.textContent = t(lang, "appearance.saved");
   }
   function updateTheme(theme) {
-    if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
-    else delete document.documentElement.dataset.theme;
+    document.documentElement.dataset.theme = theme === "light" || theme === "dark" ? theme : "system";
+  }
+  function currentAppearance() {
+    return { ...DEFAULT_APPEARANCE, ...(state?.settings ?? {}), ...pendingPatch };
+  }
+  function updatePreview(appearance) {
+    if (!previewRail || !previewStage) return;
+    previewStage.style.setProperty("--rail-w", `${appearance.railWidthPx}px`);
+    previewRail.style.setProperty("--rail-w", `${appearance.railWidthPx}px`);
+    previewRail.style.setProperty("--rail-h", `${appearance.railHeightPercent}%`);
+    previewRail.style.setProperty("--rail-pos-ratio", String(appearance.railPositionPercent / 100));
+    previewRail.style.setProperty("--rail-font", `${appearance.railFontSizePx}px`);
+    previewRail.style.setProperty("--rail-alpha", String((appearance.railOpacityPercent / 100).toFixed(2)));
+    if (previewStatus) previewStatus.hidden = !appearance.showRouteStatus;
+    if (previewRequested) previewRequested.hidden = !appearance.showRequestedModel;
+    if (previewActual) previewActual.hidden = !appearance.showActualModel;
+    if (previewMetrics) {
+      previewMetrics.textContent = `${appearance.railWidthPx} px · ${appearance.railHeightPercent}% · ${appearance.railOpacityPercent}%`;
+    }
   }
   function updateValue(setting, value) {
     const input = document.querySelector(`[data-setting="${setting}"]`);
@@ -129,6 +162,7 @@
       if (key !== "theme") updateValue(key, appearance[key]);
     }
     document.querySelector("#theme").value = appearance.theme;
+    updatePreview(appearance);
   }
   async function send(request) {
     try {
@@ -176,6 +210,7 @@
     updateValue(key, value);
     if (key === "theme") updateTheme(value);
     queuePatch({ [key]: value });
+    updatePreview(currentAppearance());
   }
   document.querySelectorAll("[data-setting]").forEach((input) => {
     const update = () => {
@@ -200,9 +235,14 @@
         updateTheme(value);
       } else updateValue(key, value);
     }
+    updatePreview(currentAppearance());
     setSaveStatus(true);
     if (saveTimer !== null) window.clearTimeout(saveTimer);
     flushPatch();
+  });
+  window.addEventListener("pagehide", flushPatch);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") flushPatch();
   });
   chrome.runtime.onMessage.addListener((message) => {
     if (message?.type === "route:state-changed" && message.state) render(message.state);

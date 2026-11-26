@@ -222,8 +222,10 @@
     "onboarding.privacyTitle": "\u767D\u540D\u5355\u5B57\u6BB5\uFF0C\u672C\u5730\u7559\u5B58",
     "onboarding.privacyCopy": "\u6B63\u6587\u3001Cookie\u3001Authorization\u3001JWT\u3001\u9644\u4EF6\u3001PoW seed \u4E0E proof token \u4E0D\u4F1A\u5199\u5165\u6269\u5C55\u5B58\u50A8\u3002",
     "onboarding.checkPrivacy": "\u68C0\u67E5\u9690\u79C1\u8BBE\u7F6E",
-    "notice.documentTitle": "Route Lens \u00b7 1.3.0 \u7248\u672c\u516c\u544a",
-    "notice.subtitle": "1.3.0 \u00b7 \u7248\u672c\u516c\u544a",
+    "notice.documentTitle": "Route Lens \u00b7 1.3.1 \u7248\u672c\u516c\u544a",
+    "notice.subtitle": "1.3.1 \u00b7 \u7248\u672c\u516c\u544a",
+    "notice.release131": "\u52a0\u56fa\u6d41\u5f0f\u89e3\u6790\u4e0e\u540e\u53f0\u7a7a\u95f2\u529f\u8017\uff1b\u5168\u754c\u9762\u7edf\u4e00\u4e3a\u73b0\u4ee3\u6df1\u6d45\u8272\u89c6\u89c9\u5e76\u6e05\u9664\u5168\u90e8 HTML \u62fc\u63a5\uff1b\u5f3a\u5316\u5bfc\u51fa\u8131\u654f\u4e0e\u81ea\u52a8\u5316\u6d4b\u8bd5\u95e8\u7981\u3002",
+    "notice.release130": "\u5168\u65b0 Route Lens \u54c1\u724c\u4e0e\u8f7b\u91cf\u524d\u7aef\uff1b\u9996\u5c4f\u805a\u7126\u6838\u5fc3\u8def\u7531\uff0c\u6b21\u8981\u5b57\u6bb5\u6309\u9700\u6298\u53e0\uff1b\u652f\u6301\u5f39\u51fa\u5c42\u5916\u89c2\u5373\u65f6\u63a7\u5236\u4e0e\u6df1\u6d45\u8272\u5e73\u9762\u89c6\u89c9\u3002",
     "notice.release122": "\u91cd\u505a\u7d27\u51d1\u5f39\u51fa\u9875\uff0c\u65b0\u589e\u4fa7\u680f\u5c3a\u5bf8\u3001\u4f4d\u7f6e\u3001\u5b57\u53f7\u3001\u900f\u660e\u5ea6\u3001\u4e3b\u9898\u548c\u663e\u793a\u9879\u81ea\u5b9a\u4e49\u3002",
     "notice.release123": "\u5916\u89c2\u63a7\u5236\u73b0\u5df2\u96c6\u6210\u5230\u6269\u5c55\u5f39\u51fa\u9875\uff1b\u72b6\u6001\u53ea\u8bf4\u660e\u8bf7\u6c42\u4e0e\u670d\u52a1\u5668\u62a5\u544a\u5b57\u6bb5\u662f\u5426\u4e00\u81f4\u3002",
     "notice.release121": "\u6539\u4e3a\u9875\u9762\u6700\u53f3\u4fa7\u5e38\u9a7b\u7a84\u578b\u72b6\u6001\u680f\uff0c\u53ea\u663e\u793a\u8def\u7531\u72b6\u6001\u3001\u8bf7\u6c42\u6a21\u578b\u4e0e\u670d\u52a1\u5668\u62a5\u544a\u7684\u6a21\u578b\u5b57\u6bb5\uff1b\u5185\u5bb9\u53ef\u5728\u680f\u5185\u6eda\u52a8\uff0c\u4e3b\u9898\u8ddf\u968f\u6d4f\u89c8\u5668\u3002",
@@ -468,8 +470,10 @@
     "onboarding.privacyTitle": "Allowlisted fields, local storage",
     "onboarding.privacyCopy": "Message text, cookies, Authorization headers, JWTs, attachments, PoW seeds, and proof tokens are never written to extension storage.",
     "onboarding.checkPrivacy": "Review privacy settings",
-    "notice.documentTitle": "Route Lens \u00b7 1.3.0 Version notice",
-    "notice.subtitle": "1.3.0 \u00b7 Version notice",
+    "notice.documentTitle": "Route Lens \u00b7 1.3.1 Version notice",
+    "notice.subtitle": "1.3.1 \u00b7 Version notice",
+    "notice.release131": "Hardened streaming parsers and background idle power; unified all six surfaces with a modern light/dark design system and zero HTML string injection; strengthened export redaction and automated checks.",
+    "notice.release130": "Introduced the Route Lens brand and lightweight popup focused on core routing fields, collapsible details, live appearance controls, and flat light/dark themes.",
     "notice.release122": "Rebuilt the compact popup and added controls for sidebar size, position, text, opacity, theme, and visible items.",
     "notice.release123": "Appearance controls are now in the extension popup; route status only compares the request and server-reported fields.",
     "notice.release121": "Replaced the expandable overlay with a narrow right-edge rail showing route status, requested model, and the server-reported model field; content scrolls within the rail and follows the browser theme.",
@@ -494,7 +498,7 @@
     "notice.release104": "Adapted to changes in ChatGPT\u2019s official conversation API paths and response format.",
     "notice.release103": "Added mini overlay and edge docking; improved English copy and narrow-screen layout.",
     "notice.release102": "Supported reload routing for project conversations and improved export redaction and privacy tests.",
-    "notice.release101": "\u5305\u62EC\u5B9E\u65F6\u8BF7\u6C42\u3001\u4F1A\u8BDD\u91CD\u8F7D\u3001Popup\u3001\u6D6E\u7A97\u3001\u8BCA\u65AD\u53F0\u3001PoW \u6570\u636E\u53CA\u4E2D\u82F1\u6587\u754C\u9762\u3002",
+    "notice.release101": "Initial release with live requests, session reload, popup, overlay, dashboard, PoW metrics, and bilingual UI.",
     "notice.close": "Close notice",
     "notice.closeManually": "Please close this browser tab.",
     "notice.hintLabel": "Route evidence details",
@@ -586,15 +590,45 @@
   }
 
   // src/ui/announcement/index.ts
+  var state;
   var languageChosen = false;
+  function applyTheme(theme) {
+    document.documentElement.dataset.theme = theme === "light" || theme === "dark" ? theme : "system";
+  }
+  function renderState(next) {
+    if (!next?.settings || (state && (next.revision ?? 0) < (state.revision ?? 0))) return;
+    state = next;
+    applyTheme(state.settings.theme);
+    if (!languageChosen) applyStaticTranslations(state.settings.uiLanguage);
+  }
   applyStaticTranslations(browserUiLanguage());
-  bindLanguageSwitch((language) => {
+  bindLanguageSwitch(async (language) => {
     languageChosen = true;
     applyStaticTranslations(language);
+    if (state?.settings.uiLanguage === language) return;
+    try {
+      const response = await chrome.runtime?.sendMessage?.({ type: "route:update-settings", settings: { uiLanguage: language } });
+      if (response?.ok && response.state) {
+        state = response.state;
+        applyTheme(state.settings.theme);
+      }
+    } catch (error) {
+      console.warn("Route Lens notice language sync skipped.", error);
+    }
   });
-  void getState().then((state) => {
-    if (!languageChosen) applyStaticTranslations(state.settings.uiLanguage);
-  }).catch(() => {
+  chrome.runtime?.onMessage?.addListener((message) => {
+    if (message && typeof message === "object" && message.type === "route:state-changed" && message.state) {
+      languageChosen = false;
+      renderState(message.state);
+    }
   });
+  void (async () => {
+    try {
+      const response = await chrome.runtime?.sendMessage?.({ type: "route:get-state" });
+      if (response?.ok && response.state) renderState(response.state);
+    } catch (error) {
+      console.warn("Route Lens notice state load skipped.", error);
+    }
+  })();
   document.querySelector("#notice-close")?.addEventListener("click", () => window.close());
 })();

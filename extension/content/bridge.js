@@ -705,6 +705,52 @@
   var MAX_STARTUP_OBSERVATIONS = 128;
   var runtimeDisconnected = false;
   var disconnectedDismissed = false;
+  var RAIL_STYLES = [
+    ":host{all:initial;position:relative;z-index:2147483647}*{box-sizing:border-box}",
+    '.probe{--bg:#0f1419;--surface:#182029;--text:#f1f5f9;--muted:#94a3b8;--line:#26323f;--accent:#4d93f7;--good:#34d399;--warn:#fbbf24;--bad:#f87171;position:fixed;z-index:2147483647;color:var(--text);background:color-mix(in srgb,var(--bg) var(--ri-opacity),transparent);border:1px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,.25);font:var(--ri-font-size)/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color-scheme:dark}',
+    '.probe[data-theme="light"]{--bg:#ffffff;--surface:#f8fafc;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;--accent:#1a68d8;--good:#047857;--warn:#b45309;--bad:#b91c1c;color-scheme:light}',
+    '@media(prefers-color-scheme:light){.probe[data-theme="system"]{--bg:#ffffff;--surface:#f8fafc;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;--accent:#1a68d8;--good:#047857;--warn:#b45309;--bad:#b91c1c;color-scheme:light}}',
+    '.probe[data-theme="dark"]{color-scheme:dark}',
+    ".probe{--ri-safe-height:min(calc(var(--ri-height-percent)*1dvh),calc(100dvh - 164px));top:max(16px,calc(16px + (100dvh - 148px - var(--ri-safe-height) - 16px)*var(--ri-position)));right:calc(100% - 100vw);bottom:auto;display:flex;flex-direction:column;width:var(--ri-width);height:var(--ri-safe-height);overflow:hidden;border-right:0;border-radius:10px 0 0 10px;box-shadow:-3px 0 var(--accent),0 4px 16px rgba(0,0,0,.12);backdrop-filter:blur(12px)}",
+    ".probe.normal{--accent:var(--good)}.probe.danger,.probe.conflict{--accent:var(--bad)}.probe.warn,.probe.suspect{--accent:var(--warn)}",
+    ".rail-scroll{min-height:0;height:100%;padding:8px 6px;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--line) transparent}",
+    ".status-block{display:grid;justify-items:center;gap:4px;padding:4px 1px 10px;border-bottom:1px solid var(--line);text-align:center}",
+    ".status-icon{display:grid;place-items:center;width:20px;height:20px;border:1.5px solid var(--accent);border-radius:50%;color:var(--accent);font-size:calc(var(--ri-font-size) + 1px);font-weight:700;line-height:1}",
+    ".status{color:var(--accent);font-size:var(--ri-font-size);font-weight:600;line-height:1.25;overflow-wrap:anywhere}",
+    ".model-block{display:grid;gap:3px;padding:8px 1px;border-bottom:1px solid var(--line)}",
+    ".model-block small{color:var(--muted);font-size:calc(var(--ri-font-size) - 1px);line-height:1.2;overflow-wrap:anywhere}",
+    ".model-block b{display:block;min-width:0;color:var(--text);font-size:var(--ri-font-size);font-weight:600;line-height:1.25;overflow-wrap:anywhere;word-break:normal}",
+    ".model-block:last-child{border-bottom:0}",
+    '.disconnected{position:fixed;top:72px;right:calc(100% - 100vw);bottom:100px;z-index:2147483647;display:flex;flex-direction:column;align-items:center;gap:8px;width:var(--ri-width,72px);padding:10px 6px;border:1px solid #e2e8f0;border-right:0;border-radius:10px 0 0 10px;background:#fff;color:#0f172a;box-shadow:-3px 0 #dc2626,0 4px 16px rgba(0,0,0,.08);font:11px/1.3 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;text-align:center;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}',
+    ".disconnected-icon{display:grid;place-items:center;width:20px;height:20px;border:1.5px solid #dc2626;border-radius:50%;color:#dc2626;font-weight:700;line-height:1}",
+    ".disconnected-actions{display:flex;flex-direction:column;gap:6px;margin-top:2px}",
+    ".disconnected button{width:28px;height:28px;flex:0 0 auto;padding:0;border:1px solid #cbd5e1;border-radius:7px;background:#f8fafc;color:inherit;cursor:pointer;font:13px/1 system-ui,sans-serif}",
+    ".disconnected button:hover{border-color:#1a68d8;color:#1a68d8}",
+    ".disconnected button:focus-visible{outline:2px solid #1a68d8;outline-offset:1px}",
+    "@media(prefers-color-scheme:dark){.disconnected{border-color:#26323f;background:#0f1419;color:#f1f5f9;box-shadow:-3px 0 #f87171,0 4px 16px rgba(0,0,0,.3)}.disconnected-icon{border-color:#f87171;color:#f87171}.disconnected button{border-color:#364455;background:#182029}.disconnected button:hover{border-color:#4d93f7;color:#4d93f7}}",
+    "@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}"
+  ].join("\n");
+  function handleRuntimeDisconnected() {
+    if (runtimeDisconnected) return;
+    runtimeDisconnected = true;
+    captureGeneration++;
+    pendingContext = null;
+    if (scanTimer !== null) {
+      window.clearTimeout(scanTimer);
+      scanTimer = null;
+    }
+    try {
+      domObserver.disconnect();
+    } catch {
+    }
+    window.removeEventListener("message", onWindowMessage);
+    window.removeEventListener("resize", onWindowResize);
+    try {
+      chrome.runtime?.onMessage?.removeListener?.(onRuntimeMessage);
+    } catch {
+    }
+    render();
+  }
   async function sendToRuntime(request) {
     try {
       if (runtimeDisconnected || typeof chrome === "undefined" || typeof chrome.runtime?.sendMessage !== "function") {
@@ -713,14 +759,7 @@
       return await chrome.runtime.sendMessage(request);
     } catch (error) {
       if (!runtimeDisconnected && error instanceof Error && /extension context invalidated/i.test(error.message)) {
-        runtimeDisconnected = true;
-        captureGeneration++;
-        pendingContext = null;
-        if (scanTimer !== null) {
-          window.clearTimeout(scanTimer);
-          scanTimer = null;
-        }
-        render();
+        handleRuntimeDisconnected();
       }
       throw error;
     }
@@ -850,9 +889,6 @@
     if (turn?.modelLabelConflict) return t(language, "value.labelConflict");
     return turn?.modelLabel ?? "\u2014";
   }
-  function escapeHtml(value) {
-    return String(value ?? "\u2014").replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char] ?? char);
-  }
   function conversationIdFromPath() {
     return conversationIdFromPathname(location.pathname);
   }
@@ -971,12 +1007,58 @@
     }
     const root = host.shadowRoot;
     if (!root) return;
+    let styleEl = root.querySelector("style[data-route-lens-rail]");
+    if (!styleEl) {
+      styleEl = document.createElement("style");
+      styleEl.dataset.routeLensRail = "true";
+      styleEl.textContent = RAIL_STYLES;
+      root.replaceChildren(styleEl);
+    }
     const language = state.settings.uiLanguage;
     if (runtimeDisconnected) {
-      if (renderedSignature === "disconnected") return;
-      renderedSignature = "disconnected";
-      root.innerHTML = '<style>:host{all:initial;position:relative;z-index:2147483647}*{box-sizing:border-box}.disconnected{position:fixed;top:72px;right:calc(100% - 100vw);bottom:100px;z-index:2147483647;display:flex;flex-direction:column;align-items:center;gap:10px;width:72px;padding:10px 7px;border:1px solid #e2e8f0;border-right:0;border-radius:8px 0 0 8px;background:#fff;color:#0f172a;box-shadow:-3px 0 #dc2626,0 4px 16px rgba(0,0,0,.08);font:11px/1.3 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;text-align:center;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}@media(max-width:560px){.disconnected{top:72px;bottom:96px;width:64px;padding:8px 6px}}.disconnected button{width:28px;height:28px;flex:0 0 auto;padding:0;border:1px solid #cbd5e1;border-radius:6px;background:#f8fafc;color:inherit;cursor:pointer;font:14px/1 system-ui,sans-serif}.disconnected button:focus-visible{outline:2px solid #1a68d8;outline-offset:1px}@media(prefers-color-scheme:dark){.disconnected{border-color:#26323f;background:#0f1419;color:#f1f5f9;box-shadow:-3px 0 #f87171,0 4px 16px rgba(0,0,0,.3)}.disconnected button{border-color:#364455;background:#182029}}</style><section class="disconnected" role="status" aria-label="' + escapeHtml(t(language, "overlay.disconnected")) + '"><span aria-hidden="true">!</span><span>' + escapeHtml(t(language, "overlay.disconnected")) + '</span><button id="reconnect" type="button" title="' + escapeHtml(t(language, "overlay.refreshPage")) + '" aria-label="' + escapeHtml(t(language, "overlay.refreshPage")) + '">↻</button></section>';
-      root.getElementById("reconnect")?.addEventListener("click", () => location.reload());
+      const disconnectedSig = `disconnected:${language}:${geometry.width}`;
+      if (renderedSignature === disconnectedSig) return;
+      renderedSignature = disconnectedSig;
+      const section = document.createElement("section");
+      section.className = "disconnected";
+      section.setAttribute("role", "status");
+      section.setAttribute("aria-label", t(language, "overlay.disconnected"));
+      section.style.setProperty("--ri-width", `${geometry.width}px`);
+
+      const icon = document.createElement("span");
+      icon.className = "disconnected-icon";
+      icon.setAttribute("aria-hidden", "true");
+      icon.textContent = "!";
+
+      const label = document.createElement("span");
+      label.textContent = t(language, "overlay.disconnected");
+
+      const actions = document.createElement("div");
+      actions.className = "disconnected-actions";
+
+      const reconnectButton = document.createElement("button");
+      reconnectButton.id = "reconnect";
+      reconnectButton.type = "button";
+      reconnectButton.title = t(language, "overlay.refreshPage");
+      reconnectButton.setAttribute("aria-label", t(language, "overlay.refreshPage"));
+      reconnectButton.textContent = "↻";
+      reconnectButton.addEventListener("click", () => location.reload());
+
+      const dismissButton = document.createElement("button");
+      dismissButton.id = "dismiss-disconnected";
+      dismissButton.type = "button";
+      const dismissLabel = language === "zh" ? "关闭提示" : "Dismiss";
+      dismissButton.title = dismissLabel;
+      dismissButton.setAttribute("aria-label", dismissLabel);
+      dismissButton.textContent = "×";
+      dismissButton.addEventListener("click", () => {
+        disconnectedDismissed = true;
+        render();
+      });
+
+      actions.append(reconnectButton, dismissButton);
+      section.append(icon, label, actions);
+      root.replaceChildren(styleEl, section);
       return;
     }
     const mode = state.settings.captureMode;
@@ -1011,42 +1093,75 @@
     if (signature === renderedSignature) return;
     renderedSignature = signature;
     const copy = overlayVerdictCopy(turn, mode, language);
-    const routeModel = overlayRouteText(turn, language);
+    const routeModel = overlayRouteText(turn, language) ?? "—";
     const requestedModel = turn?.requestedModel ?? (turn?.captureMode === "reload" ? t(language, "value.reloadNoRequest") : "—");
     const marker = turn?.verdict === "normal" ? "✓" : ["mismatch", "conflict"].includes(turn?.verdict) ? "!" : turn ? "·" : "…";
-    const styles = `
-    <style>
-      :host{all:initial;position:relative;z-index:2147483647}*{box-sizing:border-box}
-      .probe{--bg:#0f1419;--surface:#182029;--text:#f1f5f9;--muted:#94a3b8;--line:#26323f;--accent:#4d93f7;--good:#34d399;--warn:#fbbf24;--bad:#f87171;position:fixed;z-index:2147483647;color:var(--text);background:color-mix(in srgb,var(--bg) var(--ri-opacity),transparent);border:1px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,.25);font:var(--ri-font-size)/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color-scheme:dark}
-      .probe[data-theme="light"]{--bg:#ffffff;--surface:#f8fafc;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;--accent:#1a68d8;--good:#047857;--warn:#b45309;--bad:#b91c1c;color-scheme:light}
-      @media(prefers-color-scheme:light){.probe[data-theme="system"]{--bg:#ffffff;--surface:#f8fafc;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;--accent:#1a68d8;--good:#047857;--warn:#b45309;--bad:#b91c1c;color-scheme:light}}
-      .probe[data-theme="dark"]{color-scheme:dark}
-      .probe{--ri-safe-height:min(calc(var(--ri-height-percent)*1dvh),calc(100dvh - 164px));top:max(16px,calc(16px + (100dvh - 148px - var(--ri-safe-height) - 16px)*var(--ri-position)));right:calc(100% - 100vw);bottom:auto;display:flex;flex-direction:column;width:var(--ri-width);height:var(--ri-safe-height);overflow:hidden;border-right:0;border-radius:8px 0 0 8px;box-shadow:-3px 0 var(--accent),0 4px 16px rgba(0,0,0,.12);backdrop-filter:blur(12px)}
-      .probe.normal{--accent:var(--good)}.probe.danger,.probe.conflict{--accent:var(--bad)}.probe.warn,.probe.suspect{--accent:var(--warn)}
-      .rail-scroll{min-height:0;height:100%;padding:8px 6px;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
-      .status-block{display:grid;justify-items:center;gap:4px;padding:4px 1px 10px;border-bottom:1px solid var(--line);text-align:center}
-      .status-icon{display:grid;place-items:center;width:20px;height:20px;border:1.5px solid var(--accent);border-radius:50%;color:var(--accent);font-size:calc(var(--ri-font-size) + 1px);font-weight:700;line-height:1}
-      .status{color:var(--accent);font-size:var(--ri-font-size);font-weight:600;line-height:1.25;overflow-wrap:anywhere}
-      .model-block{display:grid;gap:3px;padding:8px 1px;border-bottom:1px solid var(--line)}
-      .model-block small{color:var(--muted);font-size:calc(var(--ri-font-size) - 1px);line-height:1.2;overflow-wrap:anywhere}
-      .model-block b{display:block;min-width:0;color:var(--text);font-size:var(--ri-font-size);font-weight:600;line-height:1.25;overflow-wrap:anywhere;word-break:normal}
-      .model-block:last-child{border-bottom:0}
-      @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}
-    </style>`;
     const heightPercent = appearance.railHeightPercent ?? 75;
     const verticalPosition = Math.max(0, Math.min(appearance.railPositionPercent ?? 58, 100)) / 100;
-    const railStyle = `--ri-width:${geometry.width}px;--ri-height-percent:${heightPercent};--ri-position:${verticalPosition};--ri-font-size:${appearance.railFontSizePx ?? 10}px;--ri-opacity:${appearance.railOpacityPercent ?? 92}%`;
-    const statusBlock = appearance.showRouteStatus === false ? "" : `<div class="status-block" role="status" aria-label="${escapeHtml(copy.label)}" title="${escapeHtml(copy.label)}"><span class="status-icon" aria-hidden="true">${marker}</span><span class="status">${escapeHtml(copy.label)}</span></div>`;
-    const requestedBlock = appearance.showRequestedModel === false ? "" : `<div class="model-block"><small>${escapeHtml(t(language, "field.requested"))}</small><b title="${escapeHtml(requestedModel)}">${escapeHtml(requestedModel)}</b></div>`;
-    const actualBlock = appearance.showActualModel === false ? "" : `<div class="model-block"><small>${escapeHtml(t(language, "field.responseRoute"))}</small><b title="${escapeHtml(routeModel ?? "—")}">${escapeHtml(routeModel)}</b></div>`;
-    root.innerHTML = `${styles}
-      <aside class="probe rail ${copy.tone}" style="${railStyle}" data-theme="${theme}" lang="${language === "zh" ? "zh-CN" : "en"}" role="complementary" aria-label="${escapeHtml(language === "zh" ? "路由状态" : "Route status")}">
-        <div class="rail-scroll">
-          ${statusBlock}${requestedBlock}${actualBlock}
-        </div>
-      </aside>`;
+
+    let aside = root.querySelector("aside.probe.rail");
+    let scroll = aside?.querySelector(".rail-scroll") ?? null;
+    if (!aside || !scroll) {
+      aside = document.createElement("aside");
+      scroll = document.createElement("div");
+      scroll.className = "rail-scroll";
+      aside.appendChild(scroll);
+      root.replaceChildren(styleEl, aside);
+    }
+    aside.className = `probe rail ${copy.tone}`;
+    aside.dataset.theme = theme;
+    aside.lang = language === "zh" ? "zh-CN" : "en";
+    aside.setAttribute("role", "complementary");
+    aside.setAttribute("aria-label", language === "zh" ? "路由状态" : "Route status");
+    aside.setAttribute(
+      "style",
+      `--ri-width:${geometry.width}px;--ri-height-percent:${heightPercent};--ri-position:${verticalPosition};--ri-font-size:${appearance.railFontSizePx ?? 10}px;--ri-opacity:${appearance.railOpacityPercent ?? 92}%`
+    );
+
+    const previousScrollTop = scroll.scrollTop;
+    const blocks = [];
+    if (appearance.showRouteStatus !== false) {
+      const statusBlock = document.createElement("div");
+      statusBlock.className = "status-block";
+      statusBlock.setAttribute("role", "status");
+      statusBlock.setAttribute("aria-label", copy.label);
+      statusBlock.title = copy.label;
+      const iconEl = document.createElement("span");
+      iconEl.className = "status-icon";
+      iconEl.setAttribute("aria-hidden", "true");
+      iconEl.textContent = marker;
+      const statusEl = document.createElement("span");
+      statusEl.className = "status";
+      statusEl.textContent = copy.label;
+      statusBlock.append(iconEl, statusEl);
+      blocks.push(statusBlock);
+    }
+    if (appearance.showRequestedModel !== false) {
+      const requestedBlock = document.createElement("div");
+      requestedBlock.className = "model-block";
+      const labelEl = document.createElement("small");
+      labelEl.textContent = t(language, "field.requested");
+      const valueEl = document.createElement("b");
+      valueEl.title = requestedModel;
+      valueEl.textContent = requestedModel;
+      requestedBlock.append(labelEl, valueEl);
+      blocks.push(requestedBlock);
+    }
+    if (appearance.showActualModel !== false) {
+      const actualBlock = document.createElement("div");
+      actualBlock.className = "model-block";
+      const labelEl = document.createElement("small");
+      labelEl.textContent = t(language, "field.responseRoute");
+      const valueEl = document.createElement("b");
+      valueEl.title = routeModel;
+      valueEl.textContent = routeModel;
+      actualBlock.append(labelEl, valueEl);
+      blocks.push(actualBlock);
+    }
+    scroll.replaceChildren(...blocks);
+    scroll.scrollTop = previousScrollTop;
   }
-  window.addEventListener("message", (event) => {
+  function onWindowMessage(event) {
     if (runtimeDisconnected) return;
     if (event.source === window && event.origin === location.origin && event.data?.source === "chatgpt-route-inspector-context") {
       const next = normalizeCaptureContext(event.data.context);
@@ -1087,21 +1202,25 @@
     }).catch(() => void 0).finally(() => {
       waitingObservations--;
     });
-  });
-  chrome.runtime.onMessage.addListener((message) => {
-    if (!message || typeof message !== "object") return;
+  }
+  function onRuntimeMessage(message) {
+    if (runtimeDisconnected || !message || typeof message !== "object") return;
     const record = message;
     if (record.type !== "route:state-changed" || !record.state) return;
     const next = record.state;
     acceptState(next);
-  });
-  window.addEventListener("resize", () => {
+  }
+  function onWindowResize() {
     if (!runtimeDisconnected && state?.settings.overlayEnabled) {
       renderedSignature = "";
       render();
     }
-  }, { passive: true });
+  }
+  window.addEventListener("message", onWindowMessage);
+  chrome.runtime.onMessage.addListener(onRuntimeMessage);
+  window.addEventListener("resize", onWindowResize, { passive: true });
   var domObserver = new MutationObserver(() => {
+    if (runtimeDisconnected) return;
     if (captureContext?.reloadEligible || state?.settings.autoCaptureEnabled === false) trackDomNodes();
     if (state?.settings.overlayEnabled && !host?.isConnected) render();
     scheduleReloadDomScan();
