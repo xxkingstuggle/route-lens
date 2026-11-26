@@ -173,7 +173,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   margin-top: 2px;
 }
 .brand-meta-line p { margin: 0; }
-.author-link, .brand-github {
+.author-link, .brand-github, .brand-site {
   display: inline-flex;
   align-items: center;
   color: var(--signal);
@@ -181,12 +181,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   text-decoration: none;
   white-space: nowrap;
 }
-.brand-github {
+.brand-github, .brand-site {
   padding-left: 10px;
   border-left: 1px solid var(--line-strong);
 }
-.brand-github::after { content: "↗"; margin-left: 3px; font-size: 11px; }
-.author-link:hover, .brand-github:hover { text-decoration: underline; text-underline-offset: 3px; }
+.brand-github::after, .brand-site::after { content: "↗"; margin-left: 3px; font-size: 11px; }
+.author-link:hover, .brand-github:hover, .brand-site:hover { text-decoration: underline; text-underline-offset: 3px; }
 
 .masthead-controls {
   display: flex;
@@ -676,7 +676,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   .masthead { flex-wrap: wrap; padding: 14px 16px; }
   .onboarding-hero, .announcement-body { padding: 20px; }
   .form-grid, .principles, .readout-grid { grid-template-columns: 1fr; }
-  .brand-github { padding-left: 0; border-left: 0; }
+  .brand-github, .brand-site { padding-left: 0; border-left: 0; }
   .announcement-releases li { grid-template-columns: 64px minmax(0, 1fr); gap: 10px; }
 }
 @media (prefers-contrast: more) {

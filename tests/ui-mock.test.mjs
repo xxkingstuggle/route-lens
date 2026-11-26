@@ -13,6 +13,7 @@ test('Popup HTML 包含必需的无障碍属性与品牌要素', async () => {
   // Brand and maintainer attribution
   assert.match(html, /Route Lens/, '包含新品牌名称 Route Lens');
   assert.match(html, /https:\/\/github\.com\/xxkingstuggle/, '包含维护者 GitHub 链接');
+  assert.match(html, /https:\/\/myzjx\.com\/software\/route-lens\//, '包含官方网站产品主页链接');
 
   // Accessibility and tabs
   assert.match(html, /role="tablist"/, '包含 tablist');
@@ -36,15 +37,19 @@ test('Popup HTML 包含必需的无障碍属性与品牌要素', async () => {
 test('用户可见界面不保留旧作者推广或外链', async () => {
   const surfaces = [
     'extension/ui/popup/index.html',
+    'extension/ui/options/index.html',
     'extension/ui/dashboard/index.html',
+    'extension/ui/onboarding/index.html',
     'extension/ui/announcement/index.html'
   ];
 
   for (const surface of surfaces) {
     const html = await readFile(resolve(root, surface), 'utf8');
     const externalLinks = [...html.matchAll(/href="(https?:\/\/[^\"]+)"/g)].map((match) => match[1]);
-    const expected = surface.endsWith('announcement/index.html') ? [] : ['https://github.com/xxkingstuggle'];
-    assert.deepEqual(externalLinks, expected, `${surface} 只保留维护者入口`);
+    const expected = surface.endsWith('announcement/index.html')
+      ? []
+      : ['https://github.com/xxkingstuggle', 'https://myzjx.com/software/route-lens/'];
+    assert.deepEqual(externalLinks, expected, `${surface} 只保留维护者 GitHub 与官网入口`);
   }
 
   const worker = await readFile(resolve(root, 'extension/background/service-worker.js'), 'utf8');
